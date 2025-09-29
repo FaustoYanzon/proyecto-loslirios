@@ -1,0 +1,30 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+
+{% block titulo %}Producción - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+    <div class="flex items-center mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Gestión de Producción</h1>
+    </div>
+    <div id="main-view" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Riego y Fertilización Card -->
+        <div class="card bg-white p-6 text-center">
+            <i class="fas fa-water text-5xl text-blue-500 mb-4"></i>
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">Riego y Fertilización</h2>
+            <div class="flex flex-col space-y-4">
+                <a href="{% url 'cargar_riego' %}" class="btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium">Cargar Registro</a>
+                <a href="{% url 'consultar_riego' %}" class="btn bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg font-medium">Consultar y Exportar</a>
+            </div>
+        </div>
+        <!-- Cosecha Card  -->
+        <div class="card bg-white p-6 text-center">
+            <i class="fas fa-leaf text-5xl text-green-500 mb-4"></i>
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">Cosecha</h2>
+            <div class="flex flex-col space-y-4">
+                <a href="#" class="btn bg-blue-400 text-white py-3 px-6 rounded-lg font-medium cursor-not-allowed">Cargar (Próximamente)</a>
+                <a href="#" class="btn bg-gray-400 text-white py-3 px-6 rounded-lg font-medium cursor-not-allowed">Consultar (Próximamente)</a>
+            </div>
+        </div>
+    </div>
+{% endblock contenido %}

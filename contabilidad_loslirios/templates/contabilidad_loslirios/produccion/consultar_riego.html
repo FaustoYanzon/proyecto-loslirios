@@ -1,0 +1,152 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+
+{% block titulo %}Consultar Riegos - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+    <div class="flex items-center mb-6">
+        <a href="{% url 'produccion' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i> Volver a Producción
+        </a>
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Consultar Registros de Riego</h1>
+    </div>
+
+    <form method="GET" id="filtro-form" class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div>
+                <label for="{{ form.fecha_desde.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.fecha_desde.label }}</label>
+                {{ form.fecha_desde }}
+            </div>
+            <div>
+                <label for="{{ form.fecha_hasta.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.fecha_hasta.label }}</label>
+                {{ form.fecha_hasta }}
+            </div>
+            <div>
+                <label for="{{ form.cabezal.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Cabezal</label>
+                {{ form.cabezal }}
+            </div>
+            <div>
+                <label for="{{ form.parral.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Parral/Potrero</label>
+                {{ form.parral }}
+            </div>
+            <div>
+                <label for="{{ form.responsable.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Responsable</label>
+                {{ form.responsable }}
+            </div>
+        </div>
+        {% if form.non_field_errors %}<div class="text-red-500 text-xs italic mt-2">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="mt-6 flex justify-center space-x-4">
+            <button type="submit" class="btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg font-medium flex items-center">
+                <i class="fas fa-search mr-2"></i> Filtrar
+            </button>
+            <a id="export-csv-btn" href="#" class="btn bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-lg font-medium">
+                <i class="fas fa-file-csv mr-2"></i> Exportar CSV
+            </a>
+        </div>
+    </form>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="py-3 px-4 text-left uppercase font-semibold text-sm text-gray-600">Inicio</th>
+                        <th class="py-3 px-4 text-left uppercase font-semibold text-sm text-gray-600">Cabezal</th>
+                        <th class="py-3 px-4 text-left uppercase font-semibold text-sm text-gray-600">Parral</th>
+                        <th class="py-3 px-4 text-left uppercase font-semibold text-sm text-gray-600">Válvula</th>
+                        <th class="py-3 px-4 text-left uppercase font-semibold text-sm text-gray-600">Total Horas</th>
+                        <th class="py-3 px-4 text-left uppercase font-semibold text-sm text-gray-600">Fertilizante</th>
+                        <th class="py-3 px-4 text-left uppercase font-semibold text-sm text-gray-600">Responsable</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in page_obj %}
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-4">{{ registro.inicio|date:"d/m/Y H:i" }}</td>
+                            <td class="py-3 px-4">{{ registro.cabezal }}</td>
+                            <td class="py-3 px-4">{{ registro.parral }}</td>
+                            <td class="py-3 px-4">{{ registro.valvula_abierta }}</td>
+                            <td class="py-3 px-4">{{ registro.total_horas }}</td>
+                            <td class="py-3 px-4">
+                                {% if registro.fertilizante_nombre %}
+                                    {{ registro.fertilizante_nombre }} ({{ registro.fertilizante_litros|floatformat:2 }} L)
+                                {% else %}
+                                    <span class="text-gray-400">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">{{ registro.responsable }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-6 text-gray-500">No se encontraron registros que coincidan con los filtros.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination flex justify-center items-center mt-6 space-x-2">
+            {% if page_obj.has_previous %}
+                <a href="?page=1&{{ request.GET.urlencode }}" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm">&laquo; Primera</a>
+                <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm">Anterior</a>
+            {% endif %}
+            
+            <span class="current-page text-gray-700 font-medium">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}.
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm">Siguiente</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode }}" class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm">Última &raquo;</a>
+            {% endif %}
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Lógica para dropdowns dinámicos en filtros ---
+    const cabezalSelect = document.getElementById('{{ form.cabezal.id_for_label }}');
+    const parralSelect = document.getElementById('{{ form.parral.id_for_label }}');
+    const parralActual = "{{ request.GET.parral|default:'' }}";
+
+    function actualizarParralesFiltro() {
+        const cabezal = cabezalSelect.value;
+        if (!cabezal) {
+            parralSelect.innerHTML = '<option value="">Todos</option>';
+            return;
+        }
+
+        parralSelect.innerHTML = '<option value="">Cargando...</option>';
+        fetch(`/api/produccion/get-parrales/${cabezal}/`)
+            .then(response => response.json())
+            .then(data => {
+                parralSelect.innerHTML = '<option value="">Todos</option>';
+                data.parrales.forEach(function(parral) {
+                    const option = new Option(parral, parral);
+                    if (parral === parralActual) {
+                        option.selected = true;
+                    }
+                    parralSelect.add(option);
+                });
+            });
+    }
+
+    cabezalSelect.addEventListener('change', actualizarParralesFiltro);
+    actualizarParralesFiltro(); // Llamar al cargar para poblar si hay un cabezal seleccionado
+
+    // --- Lógica para el botón de exportación ---
+    const filtroForm = document.getElementById('filtro-form');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+
+    function updateExportLink() {
+        const formData = new URLSearchParams(new FormData(filtroForm)).toString();
+        const baseCsvUrl = "{% url 'exportar_riegos_csv' %}";
+        exportCsvBtn.href = `${baseCsvUrl}?${formData}`;
+    }
+
+    filtroForm.addEventListener('change', updateExportLink); // Actualiza el link al cambiar cualquier filtro
+    updateExportLink(); // Actualiza al cargar la página
+});
+</script>
+{% endblock contenido %}

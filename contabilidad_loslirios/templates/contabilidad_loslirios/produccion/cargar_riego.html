@@ -1,0 +1,158 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+
+{% block titulo %}Cargar Riego y Fertilización - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+    {# Mensajes de Django (Toastify-js los leerá y los mostrará) #}
+    {% if messages %}
+        <ul class="messages mb-4 hidden">
+            {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <div class="flex items-center mb-6">
+        <a href="{% url 'produccion' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i> Volver a Producción
+        </a>
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Cargar Registro de Riego y Fertilización</h1>
+    </div>
+
+    <form method="post" id="form-riego" class="bg-white p-8 rounded-lg shadow-md">
+        {% csrf_token %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <fieldset class="border p-4 rounded-md">
+                <legend class="text-lg font-semibold px-2">Ubicación</legend>
+                <div class="space-y-4 mt-2">
+                    <div>
+                        <label for="{{ form.cabezal.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Cabezal:</label>
+                        {{ form.cabezal }}
+                        {% if form.cabezal.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.cabezal.errors|first }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.parral.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Parral/Potrero:</label>
+                        {{ form.parral }}
+                        {% if form.parral.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.parral.errors|first }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.valvula_abierta.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Válvula Abierta:</label>
+                        {{ form.valvula_abierta }}
+                        {% if form.valvula_abierta.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.valvula_abierta.errors|first }}</p>{% endif %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="border p-4 rounded-md">
+                <legend class="text-lg font-semibold px-2">Tiempos</legend>
+                <div class="space-y-4 mt-2">
+                    <div>
+                        <label for="{{ form.inicio.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Inicio de Operación:</label>
+                        {{ form.inicio }}
+                        {% if form.inicio.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.inicio.errors|first }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.fin.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Fin de Operación:</label>
+                        {{ form.fin }}
+                        {% if form.fin.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.fin.errors|first }}</p>{% endif %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="border p-4 rounded-md md:col-span-2">
+                <legend class="text-lg font-semibold px-2">Fertilización (Opcional)</legend>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                    <div>
+                        <label for="{{ form.fertilizante_nombre.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Nombre Fertilizante:</label>
+                        {{ form.fertilizante_nombre }}
+                    </div>
+                    <div>
+                        <label for="{{ form.fertilizante_litros.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Cantidad (Litros):</label>
+                        {{ form.fertilizante_litros }}
+                    </div>
+                </div>
+            </fieldset>
+
+            <div class="md:col-span-2">
+                <label for="{{ form.responsable.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">Responsable:</label>
+                {{ form.responsable }}
+                {% if form.responsable.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.responsable.errors|first }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="mt-8 flex justify-center">
+            <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-medium flex items-center text-lg">
+                <i class="fas fa-save mr-2"></i> Guardar Registro
+            </button>
+        </div>
+    </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cabezalSelect = document.getElementById('{{ form.cabezal.id_for_label }}');
+    const parralSelect = document.getElementById('{{ form.parral.id_for_label }}');
+    // CAMBIO: Apuntamos al nuevo select de válvula
+    const valvulaSelect = document.getElementById('{{ form.valvula_abierta.id_for_label }}');
+
+    function updateParrales() {
+        const cabezal = cabezalSelect.value;
+        parralSelect.innerHTML = '<option value="">Cargando...</option>';
+        parralSelect.disabled = true;
+        // CAMBIO: Reseteamos también el select de válvulas
+        valvulaSelect.innerHTML = '<option value="">Seleccione un parral</option>';
+        valvulaSelect.disabled = true;
+
+        if (!cabezal) {
+            parralSelect.innerHTML = '<option value="">Seleccione un cabezal primero</option>';
+            return;
+        }
+
+        fetch(`/api/produccion/get-parrales/${cabezal}/`)
+            .then(response => response.json())
+            .then(data => {
+                parralSelect.innerHTML = '<option value="">Seleccione Parral/Potrero</option>';
+                data.parrales.forEach(parral => {
+                    parralSelect.add(new Option(parral, parral));
+                });
+                parralSelect.disabled = false;
+            });
+    }
+
+    function updateValvulas() {
+        const cabezal = cabezalSelect.value;
+        const parral = parralSelect.value;
+        valvulaSelect.innerHTML = '<option value="">Cargando...</option>';
+        valvulaSelect.disabled = true;
+
+        if (!cabezal || !parral) {
+            valvulaSelect.innerHTML = '<option value="">Seleccione un parral</option>';
+            return;
+        }
+
+        fetch(`/api/produccion/get-valvulas/${cabezal}/${parral}/`)
+            .then(response => response.json())
+            .then(data => {
+                // CAMBIO: Lógica para poblar el menú desplegable en lugar de checkboxes
+                valvulaSelect.innerHTML = '<option value="">Seleccione Válvula</option>';
+                if (data.valvulas.length > 0) {
+                    data.valvulas.forEach(valvula => {
+                        valvulaSelect.add(new Option(valvula, valvula));
+                    });
+                    valvulaSelect.disabled = false;
+                } else {
+                    valvulaSelect.innerHTML = '<option value="">No hay válvulas</option>';
+                }
+            });
+    }
+
+    cabezalSelect.addEventListener('change', updateParrales);
+    parralSelect.addEventListener('change', updateValvulas);
+
+    // Initial state
+    updateParrales();
+});
+</script>
+{% endblock contenido %}

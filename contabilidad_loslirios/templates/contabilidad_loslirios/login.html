@@ -1,0 +1,74 @@
+{% extends "contabilidad_loslirios/base_login.html" %} 
+{% load static %}
+{% block titulo %}Iniciar Sesión - Los Lirios SA{% endblock titulo %}
+
+{% block content %}
+    <div class="flex items-center justify-center min-h-screen bg-gray-100">
+        <div class="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h2>
+
+            {# Mensajes #}
+            {% if messages %}
+                <ul class="messages mb-4 hidden">
+                    {% for message in messages %}
+                        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                
+                {# Campo Usuario - Centrado #}
+                <div class="text-center">
+                    <label for="{{ form.username.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2 text-center">Usuario:</label>
+                    <div class="flex justify-center">
+                        {{ form.username }}
+                    </div>
+                    {% if form.username.errors %}
+                        <p class="text-red-500 text-xs italic mt-1 text-center">{{ form.username.errors }}</p>
+                    {% endif %}
+                </div>
+
+                {# Campo Contraseña - Centrado #}
+                <div class="text-center">
+                    <label for="{{ form.password.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2 text-center">Contraseña:</label>
+                    <div class="flex justify-center">
+                        {{ form.password }}
+                    </div>
+                    {% if form.password.errors %}
+                        <p class="text-red-500 text-xs italic mt-1 text-center">{{ form.password.errors }}</p>
+                    {% endif %}
+                </div>
+
+                {# Errores generales #}
+                {% if form.non_field_errors %}
+                    <div class="text-red-500 text-xs italic mt-2 text-center">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {# Botón - Ya está centrado por w-full #}
+                <button type="submit" class="w-full btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Entrar
+                </button>
+            </form>
+            <p class="text-center text-gray-600 text-sm mt-4">
+                ¿Olvidaste tu contraseña? <a href="#" class="text-blue-600 hover:text-blue-800">Restablecer</a>
+            </p>
+        </div>
+    </div>
+
+    <style>
+        #id_username, #id_password {
+            width: 80%;
+            margin: 0 auto;
+            text-align: left;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+    </style>
+{% endblock content %}
