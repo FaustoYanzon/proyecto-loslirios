@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Los Lirios SA - Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <style id="app-style">
+        body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        margin: 0;
+        }
+        
+        .header {
+        height: 80px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .footer {
+        height: 32px !important;
+        font-size: 0.85rem;
+        padding-top: 0;
+        padding-bottom: 0;
+        }
+        
+        .content {
+        flex: 1;
+        padding: 2rem;
+        }
+        
+        .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        
+        .btn {
+        transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+        transform: translateY(-2px);
+        }
+        
+        .btn:active {
+        transform: translateY(0);
+        }
+        
+        table {
+        width: 100%;
+        border-collapse: collapse;
+        }
+        
+        table th, table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+        }
+        
+        table th {
+        background-color: #f8fafc;
+        font-weight: 600;
+        }
+        
+        .input-group {
+        margin-bottom: 1rem;
+        }
+        
+        .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        }
+        
+        .results-container {
+        max-height: 400px;
+        overflow-y: auto;
+        }
+        
+        .spinner {
+        animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+        }
+
+        .inherited-content-container {
+        width: 80%;
+        max-width: 1100px;
+        background-color: white;
+        border: 1px solid #ddd;
+        padding: 20px;
+        margin-bottom: 20px;
+        }
+
+        .container {
+        flex-grow: 1;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        }
+
+        .content-container { 
+        width: 80%;
+        max-width: 1100px; 
+        margin-bottom: 20px;
+        background-color: white;
+        border: 1px solid #ddd;
+        padding: 20px;
+        }
+        
+        .grid > div {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        }
+
+        .row > div {
+        padding-right: 5px;
+        padding-left: 5px;
+        margin-bottom: 10px; /* Espacio entre filas */
+        }
+
+        .fila-jornal input, .fila-jornal select {
+        width: 100%;
+        }
+
+        select, input[type="text"], input[type="number"], input[type="date"], textarea {
+            width: 240px;
+            min-width: 180px;
+            box-sizing: border-box;
+        }
+        .sidebar-collapsed {
+            width: 56px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+        .sidebar-collapsed .sidebar-text {
+            display: none !important;
+        }
+        .sidebar-collapsed #toggleSidebar i {
+            transform: rotate(180deg);
+        }
+        .main-collapsed {
+            margin-left: 56px !important;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header bg-white flex items-center justify-between px-8 fixed w-full z-10">
+        <div class="text-4xl font-bold text-gray-800">
+            <h1>Los Lirios Sa</h1>
+        </div>
+        <nav>
+            {% if user.is_authenticated %}
+                <span class="text-gray-700 mr-4">Bienvenido, <span class="font-semibold">{{ user.username }}</span></span>
+                {# Formulario para cerrar sesión con POST #}
+                <form action="{% url 'logout' %}" method="post" class="inline-block">
+                    {% csrf_token %} 
+                    <button type="submit" class="btn bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium flex items-center">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
+                    </button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Iniciar Sesión
+                </a>
+            {% endif %}
+        </nav>
+    </header>
+    <aside id="sidebar" class="sidebar bg-gray-800 text-white w-48 fixed left-0 top-20 h-full p-6 pt-3 transition-all duration-300 z-20">
+        <button id="toggleSidebar" class="absolute top-2 right-2 bg-gray-700 text-white rounded-full p-1 focus:outline-none z-30" title="Contraer barra">
+            <i class="fas fa-angle-left"></i>
+        </button>
+        <nav>
+            <ul class="space-y-4">
+                <li>
+                    <a href="{% url 'main' %}" class="flex items-center text-gray-300 hover:text-white">
+                        <i class="fas fa-home mr-2"></i>
+                        <span class="sidebar-text">Inicio</span>
+                    </a>
+                </li>
+                {% if perms.contabilidad_loslirios.can_view_jornales or perms.contabilidad_loslirios.can_view_movimientos %}
+                <li>
+                    <a href="{% url 'contabilidad' %}" class="flex items-center text-gray-300 hover:text-white">
+                        <i class="fas fa-calculator mr-2"></i>
+                        <span class="sidebar-text">Administracion</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if perms.contabilidad_loslirios.can_view_produccion_data %}
+                <li>
+                    <a href="{% url 'produccion' %}" class="flex items-center text-gray-300 hover:text-white">
+                        <i class="fas fa-tractor mr-2"></i>
+                        <span class="sidebar-text">Producción</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if perms.contabilidad_loslirios.can_view_analisis_data %}
+                <li>
+                    <a href="{% url 'analisis' %}" class="flex items-center text-gray-300 hover:text-white">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        <span class="sidebar-text">Analisis</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if perms.contabilidad_loslirios.can_view_flujo_data %}
+                <li>
+                    <a href="{% url 'flujo_anual' %}" class="flex items-center text-gray-300 hover:text-white">
+                        <i class="fas fa-money-bill-wave mr-2"></i>
+                        <span class="sidebar-text">Flujo</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </aside>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('toggleSidebar');
+            const mainContent = document.getElementById('main-content');
+            toggleBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('sidebar-collapsed');
+                mainContent.classList.toggle('main-collapsed');
+            });
+        });
+    </script>
+    <!-- Main Content -->
+    <main id="main-content" class="content mt-20 mb-16 ml-48 p-8 transition-all duration-300">
+        {% block contenido %}
+            <style>
+                    /* Damos una altura fija al contenedor del mapa */
+                    #map { 
+                        height: 60vh; /* Ocupará el 80% de la altura de la pantalla */
+                        width: 100%;
+                        border-radius: 0.5rem; /* Bordes redondeados */
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Sombra suave */
+                    }
+                </style>
+
+                <div class="flex items-center mb-6">
+                    <h1 class="text-2xl font-semibold text-gray-800 ml-4">Mapa Media Agua</h1>
+                </div>
+
+                <div id="map"></div>
+
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // 1. INICIALIZAR EL MAPA
+                    // Centramos el mapa en una coordenada aproximada de tu finca y definimos un nivel de zoom
+                    const map = L.map('map').setView([-32.028, -68.398], 15);
+
+                    // 2. AÑADIR UNA CAPA DE MAPA BASE
+                    // Usamos OpenStreetMap, que es gratuito.
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+
+                    // 3. OBTENER Y DIBUJAR LAS PARCELAS
+                    fetch("{% url 'parcelas_geojson' %}")
+                        .then(response => response.json())
+                        .then(data => {
+                            // Añadimos la capa GeoJSON al mapa
+                            L.geoJSON(data, {
+                                style: function(feature) {
+                                    // Estilo por defecto para los polígonos
+                                    return { 
+                                        fillColor: '#3b82f6', 
+                                        weight: 2,
+                                        opacity: 1,
+                                        color: 'white',
+                                        fillOpacity: 0.5
+                                    };
+                                },
+                                onEachFeature: function(feature, layer) {
+                                    // Esta función se ejecuta para cada parcela
+                                    
+                                    // Creamos el contenido del popup con los datos de la parcela
+                                    let popupContent = `
+                                        <h3 class="font-bold text-lg">${feature.properties.nombre}</h3>
+                                        <ul class="mt-2 text-sm">
+                                            <li><strong>Variedad:</strong> ${feature.properties.variedad}</li>
+                                            <li><strong>Superficie:</strong> ${feature.properties.superficie_ha} ha</li>
+                                            <li><strong>Cabezal:</strong> ${feature.properties.cabezal_riego}</li>
+                                        </ul>
+                                    `;
+                                    layer.bindPopup(popupContent);
+
+                                    // Efectos al pasar el mouse
+                                    layer.on({
+                                        mouseover: function(e) {
+                                            const layer = e.target;
+                                            layer.setStyle({
+                                                weight: 4,
+                                                color: '#1f18b3ff', 
+                                                fillOpacity: 0.7
+                                            });
+                                        },
+                                        mouseout: function(e) {
+                                            // Resetea el estilo al original
+                                            L.geoJSON().resetStyle(e.target);
+                                        }
+                                    });
+                                }
+                            }).addTo(map);
+                        });
+                });
+                </script>
+        {% endblock %}
+    </main>
+    <!-- Footer -->
+    <footer class="footer bg-white flex items-center justify-center px-6 fixed bottom-0 w-full" style="height:32px;">
+        <div class="text-center text-gray-600 text-sm">
+            <p>Los Lirios SA &copy; 2025 | Email: administracion@loslirios.com </p>
+        </div>
+    </footer>
+    {# Scripts de Flatpickr y Toastify-js #}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            flatpickr("input[type='date']", {
+                dateFormat: "Y-m-d", 
+                locale: "es",
+            });
+            flatpickr.localize(flatpickr.l10ns.es); // Carga la localización en español
+
+            // --- Implementación de Toastify-js para mensajes de Django ---
+            const messagesContainer = document.querySelector('.messages'); 
+                const messages = messagesContainer.querySelectorAll('li');
+                messages.forEach(message => {
+                    let background = '#333'; 
+                    let icon = ''; 
+
+                    if (message.classList.contains('success')) {
+                        background = 'linear-gradient(to right, #22c55e, #16a34a)'; 
+                    } else if (message.classList.contains('error')) {
+                        background = 'linear-gradient(to right, #ef4444, #dc2626)'; 
+                        icon = 'fas fa-times-circle';
+                    } else if (message.classList.contains('warning')) {
+                        background = 'linear-gradient(to right, #facc15, #eab308)'; 
+                        icon = 'fas fa-exclamation-triangle';
+                    } else if (message.classList.contains('info')) {
+                        background = 'linear-gradient(to right, #3b82f6, #2563eb)'; 
+                        icon = 'fas fa-info-circle';
+                    }
+
+                    Toastify({
+                        text: message.textContent.trim(),
+                        duration: 2000, 
+                        newWindow: true,
+                        close: true,
+                        gravity: "top", 
+                        position: "right", 
+                        stopOnFocus: true, 
+                        style: {
+                            background: background,
+                            borderRadius: "8px",
+                            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                            padding: "12px 20px",
+                            fontSize: "1rem",
+                            display: "flex",
+                            alignItems: "center",
+                        },
+                        onClick: function(){} 
+                    }).showToast();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

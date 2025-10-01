@@ -1,0 +1,368 @@
+from django import forms
+from .models import *
+#Create forms here
+
+#Administration
+
+#Model for daily work
+#Options for choices in the form
+unidades_de_medida = [
+    ('Días', 'Días'),
+    ('Plantas', 'Plantas'),
+    ('Melgas', 'Melgas'),
+    ('Camellón', 'Camellón'),
+    ('Metros', 'Metros'),
+    ('Fichas', 'Fichas'),
+    ('Vin Grande', 'Vin Grande'),
+    ('Vin Pequeño', 'Vin Pequeño'),
+    ('Otros', 'Otros'),
+]
+TAREAS_POR_CLASIFICACION = {
+    'Verano': ['Jornal Comun', 'Cosecha', 'Tractor Cosecha', 'Pasero', 'Levantar Pasa', 'Control Cosecha', 'Amontonar Pasa', 'Otros'],
+    'Invierno': ['Jornal Comun', 'Poda', 'Atada', 'Tejido', 'Otros'],
+    'Primavera': ['Jornal Comun', 'Verde', 'Brote', 'Raleo', 'Polainas', 'Descole', 'Otros'],
+    'Otoño': ['Jornal Comun', 'Murones', 'Otros'],
+    'General': ['Jornal Comun', 'Tractor Comun', 'Riego', 'Const. Parral', 'Mochila', 'Limpieza Acequia', 'Rastrillar Pasa', 'Anchada', 'Zanjeo', 'Otros'],
+}
+#Form for daily work upload
+class FormRegistroTrabajo(forms.ModelForm):
+    fecha = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    unidad_medida = forms.ChoiceField(choices=unidades_de_medida)
+    tarea = forms.ChoiceField(choices=[('', 'Seleccione una clasificación primero')])
+
+    class Meta:
+        model = registro_trabajo
+        fields = [
+            'fecha', 'nombre_trabajador', 'clasificacion', 'tarea', 'detalle',
+            'cantidad', 'unidad_medida', 'precio', 'ubicacion'
+        ]
+        widgets = {
+            'nombre_trabajador': forms.TextInput(attrs={'placeholder': 'Nombre del Empleado'}),
+            'clasificacion': forms.Select(attrs={'class': 'form-control'}),
+            'tarea': forms.Select(attrs={'class': 'form-control'}),
+            'detalle': forms.TextInput(attrs={'placeholder': 'Detalles adicionales de la tarea'}),
+            'cantidad': forms.NumberInput(attrs={'placeholder': 'Cantidad', 'step': '0.5'}),
+            'precio': forms.NumberInput(attrs={'placeholder': 'Precio', 'step': '1'}),
+            'ubicacion': forms.TextInput(attrs={'placeholder': 'Ubicación'}),
+        }
+        labels = {
+            'fecha': 'Fecha',
+            'precio': 'Precio',
+            'cantidad': 'Cantidad',
+            'nombre_trabajador': 'Nombre Empleado',
+            'clasificacion': 'Clasificación',
+            'tarea': 'Tarea Realizada',
+            'detalle': 'Detalles',
+            'unidad_medida': 'Unidad de Medida',
+            'ubicacion': 'Ubicación',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Actualiza las opciones de tarea según la clasificación seleccionada
+        clasificacion = self.data.get(self.add_prefix('clasificacion')) or getattr(self.instance, 'clasificacion', None)
+        if clasificacion in TAREAS_POR_CLASIFICACION:
+            self.fields['tarea'].choices = [(t, t) for t in TAREAS_POR_CLASIFICACION[clasificacion]]
+        else:
+            self.fields['tarea'].choices = [('', 'Seleccione una clasificación primero')]
+
+        # Aplica clases y atributos a los campos
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'form-control'})
+        self.fields['fecha'].widget.attrs.update({'type': 'date'})
+        self.fields['cantidad'].widget.attrs.update({'step': '0.5'})
+        self.fields['precio'].widget.attrs.update({'step': '1'})
+#Form for consult daily work
+class FormConsultaJornal(forms.Form):
+    fecha_desde = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Desde'
+    )
+    fecha_hasta = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Hasta'
+    )
+    nombre_trabajador = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Nombre del Empleado','class': 'form-control'}),
+        label='Nombre del Trabajador'
+    )
+    clasificacion = forms.ChoiceField(
+        choices=[('', 'Todas')] + list(CLASIFICACION_CHOICES), 
+        label='Clasificación',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    tarea = forms.ChoiceField(
+        required=False,
+        choices=[('', 'Todas')], 
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Tarea Realizada'
+    )
+    detalle = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Buscar en detalles', 'class': 'form-control'}),
+        label='Detalle'
+    )
+    ubicacion = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Ubicación', 'class': 'form-control'}),
+        label='Ubicación'
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_desde = cleaned_data.get('fecha_desde')
+        fecha_hasta = cleaned_data.get('fecha_hasta')
+
+        if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+            self.add_error('fecha_hasta', 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".')
+        return cleaned_data
+
+
+
+#Model for financial movements
+#Options for choices in the form
+CLASIFICACIONES_POR_TIPO = {
+    'Sueldos Personal': ['Gerenciales', 'Encargados', 'Obreros', 'Contador', 'Abogado', 'Administrador','VEP', 'Otros'],
+    'Produccion': ['Fertilizantes', 'Agroquímicos', 'Otros'],
+    'Inversion': ['Movilidad', 'Infraestructura', 'Riego', 'Maquinaria','Parral', 'Otros'],
+    'Repuestos y Reparaciones': ['Movilidad', 'Maquinaria', 'Riego','Infraestructura', 'Otros'],
+    'Insumos Varios': ['Indumentaria', 'Herramientas', 'Combustibles', 'Otros'],
+    'Impuestos o Servicios': [ 'Hidraulica', 'Rentas', 'Municipal', 'Otros'],
+    'Energia': ['Riego','Domiciliaria', 'Otros'],
+}
+#Form for financial movements upload
+class FormMovimientoFinanciero(forms.ModelForm):
+    clasificacion = forms.ChoiceField(choices=[('', 'Seleccione un Tipo primero')])
+    
+    class Meta:
+        model = MovimientoFinanciero
+        fields = ['fecha', 'origen', 'finca', 'tipo', 'clasificacion', 'detalle', 'monto', 'moneda', 'forma_pago']
+        widgets = {
+            'fecha': forms.DateInput(attrs={'type': 'date'}),
+            'detalle': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Detalles'}),
+            'monto': forms.NumberInput(attrs={'placeholder': '0.00'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        if 'tipo' in self.data:
+            try:
+                tipo_id = self.data.get('tipo')
+                self.fields['clasificacion'].choices = [(c, c) for c in CLASIFICACIONES_POR_TIPO[tipo_id]]
+            except (ValueError, TypeError, KeyError):
+                self.fields['clasificacion'].choices = [('', 'Seleccione un tipo válido')]
+        elif self.instance.pk:
+            try:
+                self.fields['clasificacion'].choices = [(c, c) for c in CLASIFICACIONES_POR_TIPO[self.instance.tipo]]
+            except KeyError:
+                self.fields['clasificacion'].choices = [('', 'Tipo no válido')]
+
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'form-control'})
+#Form for consult financial movements 
+class FormConsultaMovimiento(forms.Form):
+    fecha_desde = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    fecha_hasta = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    
+    origen = forms.ChoiceField(choices=[('', 'Todos')] + ORIGEN_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    finca = forms.ChoiceField(choices=[('', 'Todas')] + FINCA_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    tipo = forms.ChoiceField(choices=[('', 'Todos')] + TIPO_MOVIMIENTO_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    clasificacion = forms.ChoiceField(choices=[('', 'Todas')], required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    moneda = forms.ChoiceField(choices=[('', 'Todas')] + MONEDA_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    forma_pago = forms.ChoiceField(choices=[('', 'Todas')] + FORMA_PAGO_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_desde = cleaned_data.get('fecha_desde')
+        fecha_hasta = cleaned_data.get('fecha_hasta')
+        if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+            self.add_error('fecha_hasta', 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".')
+        return cleaned_data
+
+#Form for financial incomes upload
+class FormIngresoFinanciero(forms.ModelForm):
+    class Meta:
+        model = IngresoFinanciero
+        fields = ['fecha', 'origen', 'finca', 'detalle', 'monto', 'moneda', 'forma_pago']
+        widgets = {
+            'fecha': forms.DateInput(attrs={'type': 'date'}),
+            'detalle': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Detalles'}),
+            'monto': forms.NumberInput(attrs={'placeholder': '0.00'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'form-control'})
+#Form for consult financial incomes
+class FormConsultaIngreso(forms.Form):
+    fecha_desde = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    fecha_hasta = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    
+    origen = forms.ChoiceField(choices=[('', 'Todos')] + ORIGEN_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    finca = forms.ChoiceField(choices=[('', 'Todas')] + FINCA_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    moneda = forms.ChoiceField(choices=[('', 'Todas')] + MONEDA_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+    forma_pago = forms.ChoiceField(choices=[('', 'Todas')] + FORMA_PAGO_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_desde = cleaned_data.get('fecha_desde')
+        fecha_hasta = cleaned_data.get('fecha_hasta')
+        if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+            self.add_error('fecha_hasta', 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".')
+        return cleaned_data
+
+
+
+#Forms for analisis dashboard:
+#Form for analisis jornales dashboard:
+class FormFiltroDashboardJornales(forms.Form):
+    fecha_desde = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Desde'
+    )
+    fecha_hasta = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Hasta'
+    )
+    clasificacion = forms.MultipleChoiceField(
+        choices=CLASIFICACION_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple, # Un widget de checkboxes es ideal para filtros
+        label='Temporada'
+    )
+    tarea = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label='Tarea'
+    )
+    ubicacion = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label='Ubicación'
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tarea'].choices = [(t, t) for t in registro_trabajo.objects.values_list('tarea', flat=True).distinct().order_by('tarea')]
+        self.fields['ubicacion'].choices = [(u, u) for u in registro_trabajo.objects.values_list('ubicacion', flat=True).distinct().order_by('ubicacion')]
+#Form for analisis financial movements dashboard:
+class FormFiltroDashboardMovimientos(forms.Form):
+    fecha_desde = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    fecha_hasta = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    
+    origen = forms.MultipleChoiceField(choices=ORIGEN_CHOICES, required=False, widget=forms.CheckboxSelectMultiple)
+    finca = forms.MultipleChoiceField(choices=FINCA_CHOICES, required=False, widget=forms.CheckboxSelectMultiple)
+    tipo = forms.MultipleChoiceField(choices=TIPO_MOVIMIENTO_CHOICES, required=False, widget=forms.CheckboxSelectMultiple)
+    
+    # Este se llenará con JavaScript
+    clasificacion = forms.MultipleChoiceField(choices=[], required=False, widget=forms.CheckboxSelectMultiple)
+    
+    moneda = forms.MultipleChoiceField(choices=MONEDA_CHOICES, required=False, widget=forms.CheckboxSelectMultiple)
+    forma_pago = forms.MultipleChoiceField(choices=FORMA_PAGO_CHOICES, required=False, widget=forms.CheckboxSelectMultiple)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        all_classifications = MovimientoFinanciero.objects.values_list('clasificacion', flat=True).distinct().order_by('clasificacion')
+        self.fields['clasificacion'].choices = [(c, c) for c in all_classifications]
+
+
+
+#Production
+#Model for Irrigation and Fertilization
+RIEGO_DATA = {
+    '1': {'Sult.': ['1', '2', '3', '4'], '9': ['1', '2'], '4': ['1', '2'], '5': ['1', '2'], '2': ['1', '2']},
+    '2': {'10': ['1', '2', '3'], '6': ['1', '2', '3', '4'], '2': ['1'], '11': ['1', '2', '3', '4'], '7': ['1', '2', '3', '4']},
+    '3': {'16': ['1', '2'], '13': ['1', '2', '3'], '15': ['1', '2'], '14': ['1', '2', '3'], '21': ['1', '2', '3', '4'], '12': ['1', '2', '3']},
+    '4': {'8': ['1', '2', '3'], 'SYR-RG': ['1', '2', '3'], 'Bond. Viejo': ['1', '2'], 'Bond. Nuevo': ['1', '2'], '3': ['1', '2']}
+}
+# Form for Irrigation and Fertilization upload
+class FormRegistroRiego(forms.ModelForm):
+    # Definimos los campos que serán dinámicos
+    cabezal = forms.ChoiceField(choices=[('', 'Seleccione Cabezal')] + [(c, c) for c in RIEGO_DATA.keys()])
+    parral = forms.ChoiceField(choices=[('', 'Seleccione un Cabezal primero')])
+    # CAMBIO: Usamos ChoiceField para un menú desplegable
+    valvula_abierta = forms.ChoiceField(
+        choices=[], 
+        label="Válvula Abierta",
+        required=True
+    )
+
+    class Meta:
+        model = RegistroRiego
+        # CAMBIO: Actualizamos el nombre del campo
+        fields = [
+            'cabezal', 'parral', 'valvula_abierta', 'inicio', 'fin',
+            'fertilizante_nombre', 'fertilizante_litros', 'responsable'
+        ]
+        widgets = {
+            'inicio': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'fin': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'fertilizante_nombre': forms.TextInput(attrs={'placeholder': 'Ej: Urea'}),
+            'fertilizante_litros': forms.NumberInput(attrs={'placeholder': '0.00'}),
+            'responsable': forms.TextInput(attrs={'placeholder': 'Nombre del responsable'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'form-control'})
+
+        # La lógica para poblar los selects se mantiene, pero ahora para 'valvula_abierta'
+        if self.data or self.instance.pk:
+            cabezal = self.data.get('cabezal') or getattr(self.instance, 'cabezal', None)
+            parral = self.data.get('parral') or getattr(self.instance, 'parral', None)
+
+            if cabezal:
+                parrales_choices = RIEGO_DATA.get(cabezal, {}).keys()
+                self.fields['parral'].choices = [('', 'Seleccione Parral/Potrero')] + [(p, p) for p in parrales_choices]
+            
+            if cabezal and parral:
+                valvulas_choices = RIEGO_DATA.get(cabezal, {}).get(parral, [])
+                # CAMBIO: Actualizamos el campo 'valvula_abierta'
+                self.fields['valvula_abierta'].choices = [('', 'Seleccione Válvula')] + [(v, v) for v in valvulas_choices]
+# Form for consulting and filtering irrigation records
+class FormConsultaRiego(forms.Form):
+    fecha_desde = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Desde'
+    )
+    fecha_hasta = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Hasta'
+    )
+    cabezal = forms.ChoiceField(
+        choices=[('', 'Todos')] + [(c, c) for c in RIEGO_DATA.keys()],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    parral = forms.ChoiceField(
+        choices=[('', 'Todos')], # Se llenará con JS
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    responsable = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Nombre del responsable', 'class': 'form-control'})
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_desde = cleaned_data.get('fecha_desde')
+        fecha_hasta = cleaned_data.get('fecha_hasta')
+        if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+            self.add_error('fecha_hasta', 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".')
+        return cleaned_data

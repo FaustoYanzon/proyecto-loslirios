@@ -1,0 +1,172 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+
+{% block titulo %}Consultar Movimientos - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+        <div class="flex items-center mb-6">
+            <a href="{% url 'contabilidad' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Volver a Administracion
+            </a>
+            <h1 class="text-2xl font-semibold text-gray-800 ml-4">Consultar Movimientos Financieros</h1>
+        </div>
+
+        <form method="GET" class="mb-8" id="filtro-movimiento-form">
+            {% csrf_token %} 
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {# Campo Fecha Desde #}
+                <div>
+                    <label for="{{ form.fecha_desde.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.fecha_desde.label }}</label>
+                    {{ form.fecha_desde }}
+                    {% if form.fecha_desde.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.fecha_desde.errors }}</p>
+                    {% endif %}
+                </div>
+                {# Campo Fecha Hasta #}
+                <div>
+                    <label for="{{ form.fecha_hasta.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.fecha_hasta.label }}</label>
+                    {{ form.fecha_hasta }}
+                    {% if form.fecha_hasta.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.fecha_hasta.errors }}</p>
+                    {% endif %}
+                </div>
+                {# Campo Origen #}
+                <div>
+                    <label for="{{ form.origen.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.origen.label }}</label>
+                    {{ form.origen }}
+                    {% if form.origen.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.origen.errors }}</p>
+                    {% endif %}
+                </div>
+                {# Campo Finca #}
+                <div>
+                    <label for="{{ form.finca.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.finca.label }}</label>
+                    {{ form.finca }}
+                    {% if form.finca.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.finca.errors }}</p>
+                    {% endif %}
+                </div>
+                {# Campo Tipo #}
+                <div>
+                    <label for="{{ form.tipo.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.tipo.label }}</label>
+                    {{ form.tipo }}
+                    {% if form.tipo.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.tipo.errors }}</p>
+                    {% endif %}
+                </div>
+                {# Campo Clasificacion #}
+                <div>
+                    <label for="{{ form.clasificacion.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.clasificacion.label }}</label>
+                    {{ form.clasificacion }}
+                    {% if form.clasificacion.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.clasificacion.errors }}</p>
+                    {% endif %}
+                </div>
+                {# Campo Forma de pago #}
+                <div>
+                    <label for="{{ form.forma_pago.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ form.forma_pago.label }}</label>
+                    {{ form.forma_pago }}
+                    {% if form.forma_pago.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.forma_pago.errors }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% if form.non_field_errors %}
+                <div class="text-red-500 text-xs italic mt-2">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="mt-6 flex justify-center">
+                <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg font-medium flex items-center">
+                    <i class="fas fa-search mr-2"></i> Buscar
+                </button>
+            </div>
+        </form>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Resultados de la Consulta</h2>
+
+        {# Botones de Exportación #}
+        <div class="flex justify-end mb-4 space-x-2">
+            <a id="export-movimiento-csv-btn" href="#" class="btn bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-medium">
+                    <i class="fas fa-file-csv mr-2"></i> Exportar CSV
+            </a>
+        </div>
+
+        {# Contenedor de Resultados #}
+        <div class="results-container mt-8">
+
+            {% if movimientos %}
+                <div class="overflow-x-auto shadow-md rounded-lg">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Fecha</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Origen</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Finca</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Tipo</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Clasificacion</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Detalle</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Monto</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Moneda</th>
+                                <th class="py-3 px-4 uppercase font-semibold text-sm text-gray-600">Forma de Pago</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for movimiento in movimientos %} 
+                                <tr class="border-b border-gray-200 hover:bg-gray-100">
+                                    <td class="py-3 px-4">{{ movimiento.fecha|date:"Y-m-d" }}</td>
+                                    <td class="py-3 px-4">{{ movimiento.origen }}</td>
+                                    <td class="py-3 px-4">{{ movimiento.finca }}</td>
+                                    <td class="py-3 px-4">{{ movimiento.tipo }}</td>
+                                    <td class="py-3 px-4">{{ movimiento.clasificacion }}</td>
+                                    <td class="py-3 px-4">{{ movimiento.detalle }}</td>
+                                    <td class="py-3 px-4">${{ movimiento.monto|floatformat:2 }}</td>
+                                    <td class="py-3 px-4">{{ movimiento.moneda }}</td>
+                                    <td class="py-3 px-4">{{ movimiento.forma_pago }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+
+            {% else %}
+                <p class="text-gray-600 text-center py-4">No se encontraron movimientos que coincidan con los filtros.</p>
+            {% endif %}
+        </div>
+        {# Controles de Paginación #}
+        <div class="pagination flex justify-center items-center mt-6 space-x-2">
+            {% if movimientos.has_previous %}
+                <a href="?page=1{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.finca %}&finca={{ request.GET.finca }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.clasificacion %}&clasificacion={{ request.GET.clasificacion }}{% if request.GET.detalle %}&detalle={{ request.GET.detalle }}{% endif %}{% endif %}{% if request.GET.monto_min %}&monto_min={{ request.GET.monto_min }}{% endif %}{% if request.GET.monto_max %}&monto_max={{ request.GET.monto_max }}{% endif %}{% if request.GET.moneda %}&moneda={{ request.GET.moneda }}{% endif %}{% if request.GET.forma_pago %}&forma_pago={{ request.GET.forma_pago }}{% endif %}" class="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm">&laquo; Primera</a>
+                <a href="?page={{ movimientos.previous_page_number }}{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.finca %}&finca={{ request.GET.finca }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.clasificacion %}&clasificacion={{ request.GET.clasificacion }}{% if request.GET.detalle %}&detalle={{ request.GET.detalle }}{% endif %}{% endif %}{% if request.GET.monto_min %}&monto_min={{ request.GET.monto_min }}{% endif %}{% if request.GET.monto_max %}&monto_max={{ request.GET.monto_max }}{% endif %}{% if request.GET.moneda %}&moneda={{ request.GET.moneda }}{% endif %}{% if request.GET.forma_pago %}&forma_pago={{ request.GET.forma_pago }}{% endif %}" class="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm">Anterior</a>
+            {% endif %}
+            <span class="current-page text-gray-700 font-medium">
+                Página {{ movimientos.number }} de {{ paginator.num_pages }}.
+            </span>
+            {% if movimientos.has_next %}
+                <a href="?page={{ movimientos.next_page_number }}{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.finca %}&finca={{ request.GET.finca }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.clasificacion %}&clasificacion={{ request.GET.clasificacion }}{% if request.GET.detalle %}&detalle={{ request.GET.detalle }}{% endif %}{% endif %}{% if request.GET.monto_min %}&monto_min={{ request.GET.monto_min }}{% endif %}{% if request.GET.monto_max %}&monto_max={{ request.GET.monto_max }}{% endif %}{% if request.GET.moneda %}&moneda={{ request.GET.moneda }}{% endif %}{% if request.GET.forma_pago %}&forma_pago={{ request.GET.forma_pago }}{% endif %}" class="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm">Siguiente</a>
+                <a href="?page={{ paginator.num_pages }}{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.finca %}&finca={{ request.GET.finca }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}{% if request.GET.clasificacion %}&clasificacion={{ request.GET.clasificacion }}{% if request.GET.detalle %}&detalle={{ request.GET.detalle }}{% endif %}{% endif %}{% if request.GET.monto_min %}&monto_min={{ request.GET.monto_min }}{% endif %}{% if request.GET.monto_max %}&monto_max={{ request.GET.monto_max }}{% endif %}{% if request.GET.moneda %}&moneda={{ request.GET.moneda }}{% endif %}{% if request.GET.forma_pago %}&forma_pago={{ request.GET.forma_pago }}{% endif %}" class="btn bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm">Última &raquo;</a>
+            {% endif %}
+        </div>
+    {# Script para actualizar el enlace de exportación CSV con los filtros actuales #}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filtroMovimientoForm = document.getElementById('filtro-movimiento-form');
+            const exportMovimientoCsvBtn = document.getElementById('export-movimiento-csv-btn');
+
+            function updateExportLinks() {
+                const formData = new URLSearchParams(new FormData(filtroMovimientoForm)).toString();
+                
+                // Asegúrate de que la URL de exportación CSV base sea correcta
+                const baseCsvUrl = "{% url 'exportar_movimientos_csv' %}";
+
+                exportMovimientoCsvBtn.href = `${baseCsvUrl}?${formData}`;
+            }
+
+            // Actualizar los enlaces cuando la página carga (para los filtros iniciales)
+            updateExportLinks();
+        });
+    </script>
+{% endblock contenido %}

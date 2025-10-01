@@ -1,0 +1,164 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block titulo %}Análisis de Movimientos - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+    <div class="flex items-center gap-2 mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Análisis Financiero</h1>
+        <a href="{% url 'analisis' %}" class="btn bg-gray-600 hover:bg-gray-800 text-white py-3 px-6 rounded-lg font-medium">Jornales</a>
+        <a href="{% url 'analisis_movimientos' %}" class="btn bg-gray-800 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium">Movimientos</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">Gasto Total</h4>
+            <p class="text-3xl font-bold text-gray-800">${{ kpis.gasto_total|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">Gasto Oficial</h4>
+            <p class="text-3xl font-bold text-green-600">${{ kpis.gasto_oficial|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">Gasto No Oficial</h4>
+            <p class="text-3xl font-bold text-red-600">${{ kpis.gasto_no_oficial|floatformat:2|intcomma }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">% Gasto en Energia</h4>
+            <p class="text-3xl font-bold text-gray-600">{{ kpis.porcentaje_energia|floatformat:1 }}%</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">% Gasto en Sueldos Personal</h4>
+            <p class="text-3xl font-bold text-gray-600">{{ kpis.porcentaje_sueldos_personal|floatformat:1 }}%</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">% Gastos en Inversion</h4>
+            <p class="text-3xl font-bold text-gray-600">{{ kpis.porcentaje_inversion|floatformat:1 }}%</p>
+        </div>
+    </div>  
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 grid grid-rows-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-lg">Evolución de Gastos Totales</h3>
+                    <div>
+                        <label for="agrupacion" class="text-sm font-medium">Ver por:</label>
+                        <select name="agrupacion" id="agrupacion-select" class="form-control inline w-auto ml-2">
+                            <option value="dia">Día</option>
+                            <option value="mes">Mes</option>
+                            <option value="trimestre">Trimestre</option>
+                            <option value="anio">Año</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="lineChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Top 5 Sub-categorías de Gasto</h3>
+                <canvas id="top5BarChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Gastos por Tipo</h3>
+                <canvas id="gastosportipoBarChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow gap-6">
+            <div class="bg-white p-4 rounded-lg shadow text-center">
+                <h4 class="text-sm font-semibold text-gray-500">IVA</h4>
+                <p class="text-3xl font-bold text-gray-600">${{ kpis.iva|floatformat:2|intcomma }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Distribución de Gastos por Finca</h3>
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Filtros</h3>
+                <form method="GET" class="space-y-4" id="main-filter-form">
+                        <div>
+                            <label class="block text-sm font-medium">{{ form.fecha_desde.label }}</label>
+                            {{ form.fecha_desde }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">{{ form.fecha_hasta.label }}</label>
+                            {{ form.fecha_hasta }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">{{ form.origen.label }}</label>
+                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                                {{ form.origen }}
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">{{ form.finca.label }}</label>
+                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                                {{ form.finca }}
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">{{ form.tipo.label }}</label>
+                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                                {{ form.tipo }}
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">{{ form.clasificacion.label }}</label>
+                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                                {{ form.clasificacion }}
+                            </div>
+                        </div>
+                    <button type="submit" class="w-full btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg mt-4">Aplicar Filtros</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- GRÁFICOS ESTÁTICOS (se cargan una vez) ---
+        // --- Grafico de Barras: Gastos por tipo ---
+        const gastosPorTipoCtx = document.getElementById('gastosportipoBarChart').getContext('2d');
+        new Chart(gastosPorTipoCtx, { type: 'bar', data: { labels: {{ bar_chart_labels|safe }}, datasets: [{ label: 'Gasto Total', data: {{ bar_chart_data|safe }}, backgroundColor: 'rgba(43, 40, 217, 0.67)' }] }, options: { responsive: true, indexAxis: 'y' } });
+
+        // Gráfico de Barras: Top 5 Clasificaciones
+        const top5BarCtx = document.getElementById('top5BarChart').getContext('2d');
+        new Chart(top5BarCtx, { type: 'bar', data: { labels: {{ top5_bar_chart_labels|safe }}, datasets: [{ label: 'Gasto Total', data: {{ top5_bar_chart_data|safe }}, backgroundColor: 'rgba(48, 87, 242, 0.64)' }] }, options: { responsive: true } });
+
+        // Gráfico de Torta: Distribución por Finca
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, { type: 'pie', data: { labels: {{ pie_chart_labels|safe }}, datasets: [{ data: {{ pie_chart_data|safe }}, backgroundColor: ['rgba(57, 116, 210, 0.7)', 'rgba(218, 130, 29, 0.7)'] }] }, options: { responsive: true } });
+
+        // --- LÓGICA DEL GRÁFICO DE LÍNEAS DINÁMICO (AJAX) ---
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        const lineChart = new Chart(lineCtx, { type: 'line', data: { labels: [], datasets: [{ label: 'Gasto Total', fill: true }] }, options: { responsive: true } });
+        const agrupacionSelect = document.getElementById('agrupacion-select');
+        const mainFilterForm = document.getElementById('main-filter-form');
+
+        function updateLineChart() {
+            const agrupacion = agrupacionSelect.value;
+            // Obtenemos todos los filtros del formulario principal
+            const formData = new URLSearchParams(new FormData(mainFilterForm)).toString();
+            const apiUrl = `{% url 'line_chart_data_api' %}?agrupacion=${agrupacion}&${formData}`;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    lineChart.data.labels = data.labels;
+                    lineChart.data.datasets[0].data = data.data;
+                    lineChart.update();
+                });
+        }
+
+        // Actualizar el gráfico de líneas cuando cambia la selección de agrupación
+        agrupacionSelect.addEventListener('change', updateLineChart);
+        
+        // Cargar el gráfico de líneas por primera vez al cargar la página
+        updateLineChart();
+    });
+    </script>
+{% endblock contenido %}

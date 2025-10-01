@@ -1,0 +1,178 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block titulo %}Análisis - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+    <div class="flex items-center gap-2 mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Análisis de Jornales</h1>
+        <a href="{% url 'analisis' %}" class="btn bg-gray-800 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium">Jornales</a>
+        <a href="{% url 'analisis_movimientos' %}" class="btn bg-gray-800 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium">Movimientos</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">Costo Total</h4>
+            <p class="text-3xl font-bold text-gray-800">${{ kpis.costo_total|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">Registros Totales</h4>
+            <p class="text-3xl font-bold text-gray-800">{{ kpis.total_registros }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">Trabajadores Activos</h4>
+            <p class="text-3xl font-bold text-gray-800">{{ kpis.trabajadores_activos }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <h4 class="text-sm font-semibold text-gray-500">Costo Promedio / Registro</h4>
+            <p class="text-3xl font-bold text-gray-800">${{ kpis.costo_promedio|floatformat:2|intcomma }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 grid grid-rows-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Costo de Mano de Obra Mensual</h3>
+                <!-- Agrega esto arriba del gráfico de líneas -->
+                <form method="get" id="agrupacion-form" class="mb-4">
+                    <label for="agrupacion" class="font-semibold">Ver por:</label>
+                    <select name="agrupacion" id="agrupacion" class="form-control inline w-auto ml-2">
+                        <option value="anio" {% if request.GET.agrupacion == "anio" %}selected{% endif %}>Año</option>
+                        <option value="trimestre" {% if request.GET.agrupacion == "trimestre" %}selected{% endif %}>Trimestre</option>
+                        <option value="mes" {% if request.GET.agrupacion == "mes" or not request.GET.agrupacion %}selected{% endif %}>Mes</option>
+                        <option value="dia" {% if request.GET.agrupacion == "dia" %}selected{% endif %}>Día</option>
+                    </select>
+                </form>
+                <script>
+                document.getElementById('agrupacion').addEventListener('change', function() {
+                    document.getElementById('agrupacion-form').submit();
+                });
+                </script>
+                <canvas id="lineChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Costo Total por Tarea</h3>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-rows-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Distribución por Temporada</h3>
+                <canvas id="pieChart"></canvas>
+            </div>
+            
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Filtros</h3>
+                <form method="GET" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.fecha_desde.label }}</label>
+                        {{ form.fecha_desde }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.fecha_hasta.label }}</label>
+                        {{ form.fecha_hasta }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.clasificacion.label }}</label>
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                            {{ form.clasificacion }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.tarea.label }}</label>
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                            {{ form.tarea }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.ubicacion.label }}</label>
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                            {{ form.ubicacion }}
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">Aplicar Filtros</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- GRÁFICO DE LÍNEAS ---
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: {{ line_chart_labels|safe }},
+            datasets: [{
+                label: 'Costo Total por Mes',
+                data: {{ line_chart_data|safe }},
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // --- GRÁFICO DE BARRAS ---
+    const barCtx = document.getElementById('barChart').getContext('2d');
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ bar_chart_labels|safe }},
+            datasets: [{
+                label: 'Costo Total por Tarea',
+                data: {{ bar_chart_data|safe }},
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y', 
+            responsive: true,
+            scales: {
+                x: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // --- GRÁFICO DE TORTA ---
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+            labels: {{ pie_chart_labels|safe }},
+            datasets: [{
+                label: 'Distribución de Costos',
+                data: {{ pie_chart_data|safe }},
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)'
+                ],
+            }]
+        },
+        options: {
+            responsive: true
+        }
+    });
+});
+</script>
+
+{% endblock contenido %}
