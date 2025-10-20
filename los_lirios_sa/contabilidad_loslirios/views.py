@@ -706,7 +706,7 @@ def line_chart_data_api(request):
 def flujo_anual(request):
     year_seleccionado = datetime.now().year
 
-    # Ingresos (como ya tienes)
+    # Ingresos
     ingresos_query = IngresoFinanciero.objects.filter(fecha__year=year_seleccionado)\
         .annotate(month=TruncMonth('fecha'))\
         .values('detalle', 'month')\
@@ -801,6 +801,28 @@ def flujo_anual(request):
     total_por_mes_egresos = [sum(egresos_data[nombre][i] for nombre in egresos_data) for i in range(12)]
     total_general_egresos = sum(total_por_mes_egresos)
 
+        # Inversiones 
+    inversiones_query = MovimientoFinanciero.objects.filter(
+        fecha__year=year_seleccionado,
+        tipo='Inversion'
+    ).annotate(month=TruncMonth('fecha'))\
+     .values('month')\
+     .annotate(total_mes=Sum('monto'))\
+     .order_by('month')
+
+    inversiones_por_mes = [0]*12
+    for item in inversiones_query:
+        mes = item['month'].month
+        inversiones_por_mes[mes-1] = item['total_mes']
+    total_inversiones = sum(inversiones_por_mes)
+
+    # Saldo = Ingresos - Egresos - Inversiones
+    saldo_por_mes = [
+        total_por_mes_ingresos[i] - total_por_mes_egresos[i] - inversiones_por_mes[i]
+        for i in range(12)
+    ]
+    saldo_total = sum(saldo_por_mes)
+
     context = {
         'year_seleccionado': year_seleccionado,
         'ingresos_data': dict(ingresos_data),
@@ -811,6 +833,10 @@ def flujo_anual(request):
         'egresos_totales': egresos_totales,
         'total_por_mes_egresos': total_por_mes_egresos,
         'total_general_egresos': total_general_egresos,
+        'inversiones_por_mes': inversiones_por_mes,
+        'total_inversiones': total_inversiones,
+        'saldo_por_mes': saldo_por_mes,
+        'saldo_total': saldo_total,
         'meses': ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
     }
     return render(request, 'contabilidad_loslirios/flujo/flujo_anual.html', context)

@@ -5,9 +5,6 @@
 
 {% block contenido %}
 <div class="flex items-center mb-6">
-    <a href="{% url 'analisis' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
-        <i class="fas fa-arrow-left mr-2"></i> Volver a Análisis
-    </a>
     <h1 class="text-2xl font-semibold text-gray-800 ml-4">Flujo Anual {{ year_seleccionado }}</h1>
 </div>
 
@@ -99,4 +96,63 @@
     </div>
 </div>
 
+<div class="bg-white p-4 rounded-lg shadow-md mt-4">
+    <h2 class="text-xl font-bold text-blue-700 mb-4 mt-4">INVERSIONES</h2>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="py-2 px-3 text-left font-semibold text-gray-600 border-b">Mes</th>
+                    {% for mes in meses %}
+                        <th class="py-2 px-3 text-right font-semibold text-gray-600 border-b">{{ mes }}</th>
+                    {% endfor %}
+                    <th class="py-2 px-3 text-right font-semibold text-gray-800 bg-gray-200 border-b">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="py-2 px-3 border-b font-medium text-gray-700">Inversion</td>
+                    {% for monto in inversiones_por_mes %}
+                        <td class="py-2 px-3 border-b text-right text-sm">
+                            ${{ monto|floatformat:0|intcomma }}
+                        </td>
+                    {% endfor %}
+                    <td class="py-2 px-3 border-b text-right font-bold bg-gray-100">
+                        ${{ total_inversiones|floatformat:0|intcomma }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="bg-white p-4 rounded-lg shadow-md mt-4">
+    <h2 class="text-xl font-bold text-purple-700 mb-4 mt-4">SALDO</h2>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="py-2 px-3 text-left font-semibold text-gray-600 border-b">Mes</th>
+                    {% for mes in meses %}
+                        <th class="py-2 px-3 text-right font-semibold text-gray-600 border-b">{{ mes }}</th>
+                    {% endfor %}
+                    <th class="py-2 px-3 text-right font-semibold text-gray-800 bg-gray-200 border-b">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="py-2 px-3 border-b font-medium text-gray-700">Saldo</td>
+                    {% for monto in saldo_por_mes %}
+                        <td class="py-2 px-3 border-b text-right text-sm">
+                            ${{ monto|floatformat:0|intcomma }}
+                        </td>
+                    {% endfor %}
+                    <td class="py-2 px-3 border-b text-right font-bold bg-gray-100">
+                        ${{ saldo_total|floatformat:0|intcomma }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock contenido %}
