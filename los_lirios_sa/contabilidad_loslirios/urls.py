@@ -32,6 +32,10 @@ urlpatterns = [
     # APIs 
     path('api/produccion/get-parrales/<str:cabezal>/', views.get_parrales_for_cabezal, name='get_parrales_for_cabezal'),
     path('api/produccion/get-valvulas/<str:cabezal>/<str:parral>/', views.get_valvulas_for_parral, name='get_valvulas_for_parral'),
+    # URLs para Cosecha
+    path('produccion/cosecha/cargar/', views.cargar_cosecha, name='cargar_cosecha'),
+    path('produccion/cosecha/consultar/', views.consultar_cosecha, name='consultar_cosecha'),
+    path('produccion/cosecha/exportar/csv/', views.exportar_cosecha_csv, name='exportar_cosecha_csv'),
 #URLs for Analisis
     path('analisis/', views.analisis, name='analisis'),
     path('visualizacion/analisis/movimientos/', views.analisis_movimientos, name='analisis_movimientos'),

@@ -497,8 +497,138 @@ def _obtener_riegos_filtrados(request):
         
     return registros
 
+#Logic for cosecha page:
+#Logic for cargar_cosecha page:
+@login_required
+def cargar_cosecha(request):
+    if request.method == 'POST':
+        form = CosechaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Registro de cosecha guardado exitosamente.')
+            return redirect('cargar_cosecha')
+        else:
+            messages.error(request, 'Error al guardar el registro. Por favor, revise los datos.')
+    else:
+        form = CosechaForm()
+    
+    # Obtener opciones para datalists
+    fincas = list(set([choice[0] for choice in FINCA_CHOICES] + 
+                     list(RegistroCosecha.objects.values_list('finca', flat=True).distinct())))
+    compradores = list(set([choice[0] for choice in COMPRADOR_CHOICES] + 
+                          list(RegistroCosecha.objects.values_list('comprador', flat=True).distinct())))
+    cultivos = list(set([choice[0] for choice in CULTIVO_CHOICES] + 
+                       list(RegistroCosecha.objects.values_list('cultivo', flat=True).distinct())))
+    variedades = list(set([choice[0] for choice in VARIEDAD_CHOICES] + 
+                         list(RegistroCosecha.objects.values_list('variedad', flat=True).distinct())))
+    
+    context = {
+        'form': form,
+        'fincas': fincas,
+        'compradores': compradores,
+        'cultivos': cultivos,
+        'variedades': variedades,
+    }
+    return render(request, 'contabilidad_loslirios/produccion/cargar_cosecha.html', context)
 
+#Logic for consultar_cosecha page:
+@login_required
+def consultar_cosecha(request):
+    # Inicializar formulario de filtros
+    form_filtros = FiltrosCosechaForm(request.GET or None)
+    
+    # Obtener todos los registros
+    registros = RegistroCosecha.objects.all()
+    
+    # Aplicar filtros si el formulario es válido
+    if form_filtros.is_valid():
+        fecha_inicio = form_filtros.cleaned_data.get('fecha_inicio')
+        fecha_fin = form_filtros.cleaned_data.get('fecha_fin')
+        origen = form_filtros.cleaned_data.get('origen')
+        finca = form_filtros.cleaned_data.get('finca')
+        destino = form_filtros.cleaned_data.get('destino')
+        comprador = form_filtros.cleaned_data.get('comprador')
+        variedad = form_filtros.cleaned_data.get('variedad')
+        
+        if fecha_inicio:
+            registros = registros.filter(fecha__gte=fecha_inicio)
+        if fecha_fin:
+            registros = registros.filter(fecha__lte=fecha_fin)
+        if origen:
+            registros = registros.filter(origen=origen)
+        if finca:
+            registros = registros.filter(finca__icontains=finca)
+        if destino:
+            registros = registros.filter(destino=destino)
+        if comprador:
+            registros = registros.filter(comprador__icontains=comprador)
+        if variedad:
+            registros = registros.filter(variedad__icontains=variedad)
+    
+    # Calcular totales antes de la paginación
+    total_registros = registros.count()
+    total_kg = registros.aggregate(Sum('kg_totales'))['kg_totales__sum'] or 0
+    
+    # Paginación
+    paginator = Paginator(registros.order_by('-fecha', '-id'), 15)  # 15 registros por página
+    page_number = request.GET.get('page')
+    registros_paginados = paginator.get_page(page_number)
+    
+    context = {
+        'form_filtros': form_filtros,
+        'registros': registros_paginados,
+        'total_registros': total_registros,
+        'total_kg': total_kg,
+        'paginator': paginator,
+    }
+    return render(request, 'contabilidad_loslirios/produccion/consultar_cosecha.html', context)
 
+#Logic for exportar_cosecha page:
+@login_required
+def exportar_cosecha_csv(request):
+    # Aplicar los mismos filtros que en consultar
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    origen = request.GET.get('origen')
+    finca = request.GET.get('finca')
+    destino = request.GET.get('destino')
+    variedad = request.GET.get('variedad')
+    
+    registros = RegistroCosecha.objects.all()
+    
+    if fecha_inicio:
+        registros = registros.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        registros = registros.filter(fecha__lte=fecha_fin)
+    if origen:
+        registros = registros.filter(origen=origen)
+    if finca:
+        registros = registros.filter(finca__icontains=finca)
+    if destino:
+        registros = registros.filter(destino=destino)
+    if variedad:
+        registros = registros.filter(variedad__icontains=variedad)
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="registros_cosecha.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow([
+        'ID', 'Fecha', 'Origen', 'Finca', 'Destino', 'Comprador', 'Cultivo',
+        'Parral/Potrero', 'Variedad', 'Remito', 'CIU', 'Medida', 'Peso Unitario',
+        'Cantidad', 'Bruto', 'Tara', 'Kg Totales'
+    ])
+    
+    for registro in registros:
+        writer.writerow([
+            registro.id, registro.fecha, registro.origen, registro.finca,
+            registro.destino, registro.comprador, registro.cultivo,
+            registro.parral_potrero, registro.variedad, registro.remito,
+            registro.ciu or '', registro.medida, registro.peso_unitario or '',
+            registro.cantidad, registro.bruto or '', registro.tara or '',
+            registro.kg_totales
+        ])
+    return response
 
 
 #Logic for analisis page:
@@ -840,7 +970,6 @@ def flujo_anual(request):
         'meses': ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
     }
     return render(request, 'contabilidad_loslirios/flujo/flujo_anual.html', context)
-
 
 #Logic for Sueldos page:
 @login_required 

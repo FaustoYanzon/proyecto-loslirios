@@ -167,3 +167,99 @@ class RegistroRiego(models.Model):
             ("can_view_riego", "Can view irrigation data"),
             ("can_add_riego", "Can add new irrigation entries"),
         ]
+
+# Modelo for Cosecha
+ORIGEN_CHOICES = [
+    ('Terceros', 'Terceros'),
+    ('Los Lirios', 'Los Lirios'),
+]
+
+FINCA_CHOICES = [
+    ('Mediagua', 'Mediagua'),
+    ('Caucete', 'Caucete'),
+    ('9 de Julio', '9 de Julio'),
+]
+
+DESTINO_CHOICES = [
+    ('Bodega', 'Bodega'),
+    ('Descarte', 'Descarte'),
+    ('Exportacion', 'Exportación'),
+    ('Fardo', 'Fardo'),
+    ('Mercado Interno', 'Mercado Interno'),
+    ('Pasa', 'Pasa'),
+    ('Rama Pasa', 'Rama Pasa'),
+    ('Semilla', 'Semilla'),
+]
+
+COMPRADOR_CHOICES = [
+    ('Pasero', 'Pasero'),
+    ('Natural Food', 'Natural Food'),
+    ('Vizcaino', 'Vizcaino'),
+]
+
+CULTIVO_CHOICES = [
+    ('Alfalfa', 'Alfalfa'),
+    ('Chacra', 'Chacra'),
+    ('Ind Pasa', 'Ind Pasa'),
+    ('VID', 'VID'),
+]
+
+VARIEDAD_CHOICES = [
+    ('Alfalfa', 'Alfalfa'),
+    ('Alfalfa 969', 'Alfalfa 969'),
+    ('Alfalfa GL', 'Alfalfa GL'),
+    ('Alfalfa Mecha', 'Alfalfa Mecha'),
+    ('Aspirant', 'Aspirant'),
+    ('Bonarda', 'Bonarda'),
+    ('Fiesta', 'Fiesta'),
+    ('Flame', 'Flame'),
+    ('Red Globe', 'Red Globe'),
+    ('Sandia', 'Sandía'),
+    ('Sultanina', 'Sultanina'),
+    ('Superior', 'Superior'),
+    ('Syrah', 'Syrah'),
+    ('Zapallo', 'Zapallo'),
+]
+
+MEDIDA_CHOICES = [
+    ('Caja', 'Caja'),
+    ('Bin', 'Bin'),
+    ('Chasis', 'Chasis'),
+]
+
+class RegistroCosecha(models.Model):
+    fecha = models.DateField()
+    origen = models.CharField(max_length=20, choices=ORIGEN_CHOICES)
+    finca = models.CharField(max_length=50)
+    destino = models.CharField(max_length=50, choices=DESTINO_CHOICES)
+    comprador = models.CharField(max_length=100)
+    cultivo = models.CharField(max_length=50)
+    parral_potrero = models.CharField(max_length=100, verbose_name="Parral/Potrero")
+    variedad = models.CharField(max_length=50)
+    remito = models.CharField(max_length=50, verbose_name="Número de Remito")
+    ciu = models.IntegerField(blank=True, null=True, verbose_name="CIU (Solo para uva de bodega)")
+    medida = models.CharField(max_length=20, choices=MEDIDA_CHOICES)
+    peso_unitario = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Peso Unitario (Kg)")
+    cantidad = models.IntegerField(default=1, verbose_name="Cantidad de cajas/bins")
+    bruto = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Peso Bruto (Kg)")
+    tara = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Tara (Kg)")
+    kg_totales = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Kg Totales")
+    
+    def save(self, *args, **kwargs):
+        # Calcular kg_totales automáticamente
+        if self.medida == 'Chasis':
+            if self.bruto and self.tara:
+                self.kg_totales = self.bruto - self.tara
+        else:
+            if self.peso_unitario and self.cantidad:
+                self.kg_totales = self.peso_unitario * self.cantidad
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Cosecha {self.fecha} - {self.finca} - {self.variedad}"
+    
+    class Meta:
+        verbose_name = "Registro de Cosecha"
+        verbose_name_plural = "Registros de Cosecha"
+        ordering = ['-fecha']
+

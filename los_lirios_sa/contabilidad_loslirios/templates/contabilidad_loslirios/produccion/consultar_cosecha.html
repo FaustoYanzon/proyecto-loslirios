@@ -1,0 +1,308 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+{% load humanize %}
+{% block titulo %}Consultar Cosecha - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+            <a href="{% url 'produccion' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Volver a Producción
+            </a>
+            <h1 class="text-2xl font-semibold text-gray-800 ml-4">Consultar Registros de Cosecha</h1>
+        </div>
+    </div>
+
+    <!-- Formulario de Filtros -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-filter mr-2"></i>Filtros de Búsqueda
+        </h2>
+        
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label for="{{ form_filtros.fecha_inicio.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form_filtros.fecha_inicio.label }}
+                </label>
+                {{ form_filtros.fecha_inicio }}
+            </div>
+
+            <div>
+                <label for="{{ form_filtros.fecha_fin.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form_filtros.fecha_fin.label }}
+                </label>
+                {{ form_filtros.fecha_fin }}
+            </div>
+
+            <div>
+                <label for="{{ form_filtros.origen.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form_filtros.origen.label }}
+                </label>
+                {{ form_filtros.origen }}
+            </div>
+
+            <div>
+                <label for="{{ form_filtros.finca.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form_filtros.finca.label }}
+                </label>
+                {{ form_filtros.finca }}
+            </div>
+
+            <div>
+                <label for="{{ form_filtros.destino.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form_filtros.destino.label }}
+                </label>
+                {{ form_filtros.destino }}
+            </div>
+
+            <div>
+                <label for="{{ form_filtros.comprador.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form_filtros.comprador.label }}
+                </label>
+                {{ form_filtros.comprador }}
+            </div>
+
+            <div>
+                <label for="{{ form_filtros.variedad.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form_filtros.variedad.label }}
+                </label>
+                {{ form_filtros.variedad }}
+            </div>
+
+            <div class="flex items-end space-x-2">
+                <button type="submit" class="btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex-1">
+                    <i class="fas fa-search mr-1"></i> Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resumen -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+            <div class="flex items-center">
+                <i class="fas fa-list-alt text-blue-600 text-2xl mr-3"></i>
+                <div>
+                    <p class="text-sm text-blue-600 font-medium">Total Registros</p>
+                    <p class="text-2xl font-bold text-blue-800">{{ total_registros|intcomma }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+            <div class="flex items-center">
+                <i class="fas fa-weight text-green-600 text-2xl mr-3"></i>
+                <div>
+                    <p class="text-sm text-green-600 font-medium">Total Kg</p>
+                    <p class="text-2xl font-bold text-green-800">{{ total_kg|floatformat:0|intcomma }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
+            <div class="flex items-center">
+                <i class="fas fa-download text-orange-600 text-2xl mr-3"></i>
+                <div>
+                    <p class="text-sm text-orange-600 font-medium">Exportar</p>
+                    <a href="{% url 'exportar_cosecha_csv' %}?{{ request.GET.urlencode }}" 
+                       class="text-orange-800 hover:text-orange-900 font-semibold">
+                        Descargar CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Registros -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finca</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variedad</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprador</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parral/Potrero</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medida</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Kg Totales</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remito</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for registro in registros %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ registro.fecha|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-3 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if registro.origen == 'Los Lirios' %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {{ registro.origen }}
+                            </span>
+                        </td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.finca }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.variedad }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.destino }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.comprador }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.parral_potrero }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium
+                                {% if registro.medida == 'Caja' %}bg-yellow-100 text-yellow-800
+                                {% elif registro.medida == 'Bin' %}bg-purple-100 text-purple-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ registro.medida }}
+                                {% if registro.medida != 'Chasis' and registro.cantidad %}
+                                    ({{ registro.cantidad }})
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                            {{ registro.kg_totales|floatformat:0|intcomma }} kg
+                        </td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.remito }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <div class="flex justify-center space-x-2">
+                                <button onclick="verDetalle({{ registro.id }})" 
+                                        class="text-blue-600 hover:text-blue-900" title="Ver detalle">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <a href="#" class="text-green-600 hover:text-green-900" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button onclick="confirmarEliminar({{ registro.id }})" 
+                                        class="text-red-600 hover:text-red-900" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="px-6 py-8 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                            <p class="text-lg">No se encontraron registros</p>
+                            <p class="text-sm">Intenta ajustar los filtros o <a href="{% url 'cargar_cosecha' %}" class="text-blue-600 hover:text-blue-800">crea un nuevo registro</a></p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        {% if registros.has_other_pages %}
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+                {% if registros.has_previous %}
+                    <a href="?page={{ registros.previous_page_number }}&{{ request.GET.urlencode }}" 
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Anterior
+                    </a>
+                {% endif %}
+                {% if registros.has_next %}
+                    <a href="?page={{ registros.next_page_number }}&{{ request.GET.urlencode }}" 
+                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Siguiente
+                    </a>
+                {% endif %}
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Mostrando 
+                        <span class="font-medium">{{ registros.start_index }}</span>
+                        a 
+                        <span class="font-medium">{{ registros.end_index }}</span>
+                        de 
+                        <span class="font-medium">{{ paginator.count }}</span>
+                        registros
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        {% if registros.has_previous %}
+                            <a href="?page=1&{{ request.GET.urlencode }}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                            <a href="?page={{ registros.previous_page_number }}&{{ request.GET.urlencode }}" 
+                               class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        {% endif %}
+
+                        {% for page_num in paginator.page_range %}
+                            {% if page_num == registros.number %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
+                                    {{ page_num }}
+                                </span>
+                            {% elif page_num > registros.number|add:'-3' and page_num < registros.number|add:'3' %}
+                                <a href="?page={{ page_num }}&{{ request.GET.urlencode }}" 
+                                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    {{ page_num }}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if registros.has_next %}
+                            <a href="?page={{ registros.next_page_number }}&{{ request.GET.urlencode }}" 
+                               class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                            <a href="?page={{ paginator.num_pages }}&{{ request.GET.urlencode }}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Modal para ver detalle (opcional) -->
+    <div id="modal-detalle" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Detalle del Registro</h3>
+                    <button onclick="cerrarModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="contenido-detalle">
+                    <!-- El contenido se carga dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function verDetalle(id) {
+            // Aquí puedes implementar la lógica para mostrar el detalle
+            alert('Ver detalle del registro ID: ' + id);
+        }
+
+        function confirmarEliminar(id) {
+            if (confirm('¿Está seguro de que desea eliminar este registro?')) {
+                // Aquí implementarías la lógica de eliminación
+                alert('Eliminar registro ID: ' + id);
+            }
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal-detalle').classList.add('hidden');
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('modal-detalle').addEventListener('click', function(e) {
+            if (e.target === this) {
+                cerrarModal();
+            }
+        });
+    </script>
+{% endblock contenido %}

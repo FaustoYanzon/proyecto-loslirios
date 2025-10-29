@@ -366,3 +366,125 @@ class FormConsultaRiego(forms.Form):
         if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
             self.add_error('fecha_hasta', 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".')
         return cleaned_data
+
+#Model for Harvest Records  
+# Form for Cosecha upload
+class CosechaForm(forms.ModelForm):
+    class Meta:
+        model = RegistroCosecha
+        fields = [
+            'fecha', 'origen', 'finca', 'destino', 'comprador', 'cultivo',
+            'parral_potrero', 'variedad', 'remito', 'ciu', 'medida', 
+            'peso_unitario', 'cantidad', 'bruto', 'tara'
+        ]
+        widgets = {
+            'fecha': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'origen': forms.Select(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'finca': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'list': 'finca-list'
+            }),
+            'destino': forms.Select(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'comprador': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'list': 'comprador-list'
+            }),
+            'cultivo': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'list': 'cultivo-list'
+            }),
+            'parral_potrero': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'variedad': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'list': 'variedad-list'
+            }),
+            'remito': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'ciu': forms.NumberInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'medida': forms.Select(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'id': 'id_medida'
+            }),
+            'peso_unitario': forms.NumberInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'step': '0.01'
+            }),
+            'cantidad': forms.NumberInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'min': '1'
+            }),
+            'bruto': forms.NumberInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'step': '0.01'
+            }),
+            'tara': forms.NumberInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'step': '0.01'
+            }),
+        }
+#Form for Consultin Cosecha
+class FiltrosCosechaForm(forms.Form):
+    fecha_inicio = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
+        label='Fecha Inicio'
+    )
+    fecha_fin = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
+        label='Fecha Fin'
+    )
+    origen = forms.ChoiceField(
+        required=False,
+        choices=[('', 'Todos')] + ORIGEN_CHOICES,
+        widget=forms.Select(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        })
+    )
+    finca = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'Buscar finca...'
+        })
+    )
+    destino = forms.ChoiceField(
+        required=False,
+        choices=[('', 'Todos')] + DESTINO_CHOICES,
+        widget=forms.Select(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        })
+    )
+    comprador = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'Buscar comprador...'
+        })
+    )
+    variedad = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'Buscar variedad...'
+        })
+    )
+
