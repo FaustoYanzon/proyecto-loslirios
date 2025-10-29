@@ -39,4 +39,5 @@ urlpatterns = [
     path('api/visualizacion/movimientos/line-chart-data/', views.line_chart_data_api, name='line_chart_data_api'),
 #URLs for Flujo de Caja
     path('flujo/flujo_anual/', views.flujo_anual, name='flujo_anual'),
+    path('analisis/flujo_anual/sueldos/', views.sueldos_flujo_anual, name='sueldos_flujo_anual'),
     ]

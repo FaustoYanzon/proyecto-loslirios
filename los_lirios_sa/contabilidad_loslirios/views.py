@@ -840,3 +840,103 @@ def flujo_anual(request):
         'meses': ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
     }
     return render(request, 'contabilidad_loslirios/flujo/flujo_anual.html', context)
+
+
+#Logic for Sueldos page:
+@login_required 
+def sueldos_flujo_anual(request):
+    year_seleccionado = datetime.now().year
+
+    meses_nombre_corto = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+    # Estructura base (SIN ESPACIOS EN LAS CLAVES)
+    sueldos_data = {
+        'ENCARGADO_FINCA': {},
+        'OBREROS': {
+            'TAREA GENERAL': [0] * 12,
+            'TAREA OTOÑO': [0] * 12,
+            'TAREA INVIERNO': [0] * 12,
+            'TAREA PRIMAVERA': [0] * 12,
+            'TAREA COSECHA': [0] * 12,
+        },
+        'GERENCIALES': {},
+        'VEP': {'VEP': [0] * 12},
+    }
+
+    # 1) Obtener pagos de sueldos desde MovimientoFinanciero
+    sueldos_qs = (
+        MovimientoFinanciero.objects
+        .filter(tipo='Sueldos Personal', fecha__year=year_seleccionado)
+        .annotate(month=TruncMonth('fecha'))
+        .values('clasificacion', 'detalle', 'month')
+        .annotate(total_mes=Sum('monto'))
+        .order_by('clasificacion', 'detalle', 'month')
+    )
+
+    for item in sueldos_qs:
+        clas = (item.get('clasificacion') or '').strip()
+        detalle = (item.get('detalle') or 'Sin Nombre').strip()
+        month = item['month'].month - 1
+        total = item['total_mes'] or 0
+
+        if clas.lower().startswith('encarg'):
+            target = 'ENCARGADO_FINCA'
+            if detalle not in sueldos_data[target]:
+                sueldos_data[target][detalle] = [0] * 12
+            sueldos_data[target][detalle][month] += total
+        elif clas.lower().startswith('gerenc'):
+            target = 'GERENCIALES'
+            if detalle not in sueldos_data[target]:
+                sueldos_data[target][detalle] = [0] * 12
+            sueldos_data[target][detalle][month] += total
+        elif clas.lower() == 'vep' or clas.upper() == 'VEP':
+            sueldos_data['VEP']['VEP'][month] += total
+        elif clas.lower().startswith('obrer'):
+            sueldos_data['OBREROS'].setdefault('TAREA GENERAL', [0] * 12)
+            sueldos_data['OBREROS']['TAREA GENERAL'][month] += total
+        else:
+            if detalle not in sueldos_data['GERENCIALES']:
+                sueldos_data['GERENCIALES'][detalle] = [0] * 12
+            sueldos_data['GERENCIALES'][detalle][month] += total
+
+    # 2) Agregar jornales
+    jornales_qs = (
+        registro_trabajo.objects
+        .filter(fecha__year=year_seleccionado)
+        .annotate(month=TruncMonth('fecha'))
+        .values('clasificacion', 'month')
+        .annotate(total_mes=Sum('monto_total'))
+        .order_by('clasificacion', 'month')
+    )
+
+    temporada_to_fila = {
+        'General': 'TAREA GENERAL',
+        'Otoño': 'TAREA OTOÑO',
+        'Invierno': 'TAREA INVIERNO',
+        'Primavera': 'TAREA PRIMAVERA',
+        'Verano': 'TAREA COSECHA',
+    }
+
+    for item in jornales_qs:
+        temporada = item.get('clasificacion') or 'General'
+        fila = temporada_to_fila.get(temporada, 'TAREA GENERAL')
+        mes = item['month'].month - 1
+        total = item['total_mes'] or 0
+        if fila not in sueldos_data['OBREROS']:
+            sueldos_data['OBREROS'][fila] = [0] * 12
+        sueldos_data['OBREROS'][fila][mes] += total
+
+    # 3) Calcular totales por fila
+    sueldos_totales = {}
+    for categoria, datos in sueldos_data.items():
+        sueldos_totales[categoria] = {}
+        for nombre, meses_vals in datos.items():
+            sueldos_totales[categoria][nombre] = sum(meses_vals)
+
+    context = {
+        'year_seleccionado': year_seleccionado,
+        'sueldos_data': sueldos_data,
+        'sueldos_totales': sueldos_totales,
+        'meses': meses_nombre_corto,
+    }
+    return render(request, 'contabilidad_loslirios/visualizacion/sueldos_flujo_anual.html', context)
