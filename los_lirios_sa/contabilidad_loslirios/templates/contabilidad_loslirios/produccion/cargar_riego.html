@@ -94,58 +94,46 @@
 document.addEventListener('DOMContentLoaded', function() {
     const cabezalSelect = document.getElementById('{{ form.cabezal.id_for_label }}');
     const parralSelect = document.getElementById('{{ form.parral.id_for_label }}');
-    // CAMBIO: Apuntamos al nuevo select de válvula
     const valvulaSelect = document.getElementById('{{ form.valvula_abierta.id_for_label }}');
 
     function updateParrales() {
         const cabezal = cabezalSelect.value;
-        parralSelect.innerHTML = '<option value="">Cargando...</option>';
-        parralSelect.disabled = true;
-        // CAMBIO: Reseteamos también el select de válvulas
-        valvulaSelect.innerHTML = '<option value="">Seleccione un parral</option>';
-        valvulaSelect.disabled = true;
+        parralSelect.innerHTML = '<option value="">Seleccione Parral/Potrero</option>';
+        valvulaSelect.innerHTML = '<option value="">Seleccione Válvula</option>';
 
-        if (!cabezal) {
-            parralSelect.innerHTML = '<option value="">Seleccione un cabezal primero</option>';
-            return;
+        if (cabezal) {
+            fetch(`/api/produccion/get-parrales/${cabezal}/`)
+                .then(response => response.json())
+                .then(data => {
+                    data.parrales.forEach(function(parral) {
+                        const option = document.createElement('option');
+                        option.value = parral;
+                        option.textContent = parral;
+                        parralSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
         }
-
-        fetch(`/api/produccion/get-parrales/${cabezal}/`)
-            .then(response => response.json())
-            .then(data => {
-                parralSelect.innerHTML = '<option value="">Seleccione Parral/Potrero</option>';
-                data.parrales.forEach(parral => {
-                    parralSelect.add(new Option(parral, parral));
-                });
-                parralSelect.disabled = false;
-            });
     }
 
     function updateValvulas() {
         const cabezal = cabezalSelect.value;
         const parral = parralSelect.value;
-        valvulaSelect.innerHTML = '<option value="">Cargando...</option>';
-        valvulaSelect.disabled = true;
+        valvulaSelect.innerHTML = '<option value="">Seleccione Válvula</option>';
 
-        if (!cabezal || !parral) {
-            valvulaSelect.innerHTML = '<option value="">Seleccione un parral</option>';
-            return;
-        }
-
-        fetch(`/api/produccion/get-valvulas/${cabezal}/${parral}/`)
-            .then(response => response.json())
-            .then(data => {
-                // CAMBIO: Lógica para poblar el menú desplegable en lugar de checkboxes
-                valvulaSelect.innerHTML = '<option value="">Seleccione Válvula</option>';
-                if (data.valvulas.length > 0) {
-                    data.valvulas.forEach(valvula => {
-                        valvulaSelect.add(new Option(valvula, valvula));
+        if (cabezal && parral) {
+            fetch(`/api/produccion/get-valvulas/${cabezal}/${parral}/`)
+                .then(response => response.json())
+                .then(data => {
+                    data.valvulas.forEach(function(valvula) {
+                        const option = document.createElement('option');
+                        option.value = valvula;
+                        option.textContent = valvula;
+                        valvulaSelect.appendChild(option);
                     });
-                    valvulaSelect.disabled = false;
-                } else {
-                    valvulaSelect.innerHTML = '<option value="">No hay válvulas</option>';
-                }
-            });
+                })
+                .catch(error => console.error('Error:', error));
+        }
     }
 
     cabezalSelect.addEventListener('change', updateParrales);

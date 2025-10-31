@@ -288,86 +288,176 @@ RIEGO_DATA = {
 }
 # Form for Irrigation and Fertilization upload
 class FormRegistroRiego(forms.ModelForm):
-    # Definimos los campos que serán dinámicos
-    cabezal = forms.ChoiceField(choices=[('', 'Seleccione Cabezal')] + [(c, c) for c in RIEGO_DATA.keys()])
-    parral = forms.ChoiceField(choices=[('', 'Seleccione un Cabezal primero')])
-    # CAMBIO: Usamos ChoiceField para un menú desplegable
-    valvula_abierta = forms.ChoiceField(
-        choices=[], 
-        label="Válvula Abierta",
-        required=True
-    )
-
     class Meta:
         model = RegistroRiego
-        # CAMBIO: Actualizamos el nombre del campo
         fields = [
-            'cabezal', 'parral', 'valvula_abierta', 'inicio', 'fin',
+            'inicio', 'fin', 'cabezal', 'parral', 'valvula_abierta',
             'fertilizante_nombre', 'fertilizante_litros', 'responsable'
         ]
         widgets = {
-            'inicio': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'fin': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'fertilizante_nombre': forms.TextInput(attrs={'placeholder': 'Ej: Urea'}),
-            'fertilizante_litros': forms.NumberInput(attrs={'placeholder': '0.00'}),
-            'responsable': forms.TextInput(attrs={'placeholder': 'Nombre del responsable'}),
+            'inicio': forms.DateTimeInput(attrs={
+                'type': 'datetime-local',
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'fin': forms.DateTimeInput(attrs={
+                'type': 'datetime-local',
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            'fertilizante_nombre': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'placeholder': 'Nombre del fertilizante (opcional)'
+            }),
+            'fertilizante_litros': forms.NumberInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0'
+            }),
+            'responsable': forms.TextInput(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'placeholder': 'Nombre del responsable'
+            })
+        }
+        labels = {
+            'inicio': 'Fecha y Hora de Inicio',
+            'fin': 'Fecha y Hora de Fin',
+            'cabezal': 'Cabezal de Riego',
+            'parral': 'Parral/Potrero',
+            'valvula_abierta': 'Válvula Abierta',
+            'fertilizante_nombre': 'Fertilizante (Opcional)',
+            'fertilizante_litros': 'Litros de Fertilizante',
+            'responsable': 'Responsable'
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field_name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control'})
+        
+        # Definir los campos dinámicos con las clases CSS
+        self.fields['cabezal'] = forms.ChoiceField(
+            choices=[('', 'Seleccione Cabezal')] + [(c, c) for c in RIEGO_DATA.keys()],
+            required=True,
+            widget=forms.Select(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            label='Cabezal de Riego'
+        )
+        
+        self.fields['parral'] = forms.ChoiceField(
+            choices=[('', 'Seleccione un Cabezal primero')],
+            required=True,
+            widget=forms.Select(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            label='Parral/Potrero'
+        )
+        
+        self.fields['valvula_abierta'] = forms.ChoiceField(
+            choices=[('', 'Seleccione Válvula')],
+            required=True,
+            widget=forms.Select(attrs={
+                'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+            }),
+            label='Válvula Abierta'
+        )
 
-        # La lógica para poblar los selects se mantiene, pero ahora para 'valvula_abierta'
-        if self.data or self.instance.pk:
-            cabezal = self.data.get('cabezal') or getattr(self.instance, 'cabezal', None)
-            parral = self.data.get('parral') or getattr(self.instance, 'parral', None)
+        # Lógica para poblar los selects dinámicamente
+        if self.data:
+            cabezal = self.data.get('cabezal')
+            parral = self.data.get('parral')
 
-            if cabezal:
-                parrales_choices = RIEGO_DATA.get(cabezal, {}).keys()
+            if cabezal and cabezal in RIEGO_DATA:
+                parrales_choices = list(RIEGO_DATA[cabezal].keys())
                 self.fields['parral'].choices = [('', 'Seleccione Parral/Potrero')] + [(p, p) for p in parrales_choices]
             
-            if cabezal and parral:
-                valvulas_choices = RIEGO_DATA.get(cabezal, {}).get(parral, [])
-                # CAMBIO: Actualizamos el campo 'valvula_abierta'
+            if cabezal and parral and cabezal in RIEGO_DATA and parral in RIEGO_DATA[cabezal]:
+                valvulas_choices = RIEGO_DATA[cabezal][parral]
                 self.fields['valvula_abierta'].choices = [('', 'Seleccione Válvula')] + [(v, v) for v in valvulas_choices]
-# Form for consulting and filtering irrigation records
-class FormConsultaRiego(forms.Form):
+
+        elif self.instance.pk:
+            # Si estamos editando un registro existente
+            cabezal = getattr(self.instance, 'cabezal', None)
+            parral = getattr(self.instance, 'parral', None)
+
+            if cabezal and cabezal in RIEGO_DATA:
+                parrales_choices = list(RIEGO_DATA[cabezal].keys())
+                self.fields['parral'].choices = [('', 'Seleccione Parral/Potrero')] + [(p, p) for p in parrales_choices]
+            
+            if cabezal and parral and cabezal in RIEGO_DATA and parral in RIEGO_DATA[cabezal]:
+                valvulas_choices = RIEGO_DATA[cabezal][parral]
+                self.fields['valvula_abierta'].choices = [('', 'Seleccione Válvula')] + [(v, v) for v in valvulas_choices]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        inicio = cleaned_data.get('inicio')
+        fin = cleaned_data.get('fin')
+        cabezal = cleaned_data.get('cabezal')
+        parral = cleaned_data.get('parral')
+        valvula_abierta = cleaned_data.get('valvula_abierta')
+        
+        # Validación de fechas
+        if inicio and fin and fin <= inicio:
+            raise forms.ValidationError('La fecha de fin debe ser posterior a la fecha de inicio.')
+        
+        # Validación de cabezal
+        if cabezal and cabezal not in RIEGO_DATA:
+            raise forms.ValidationError('Cabezal no válido.')
+            
+        # Validación de parral
+        if cabezal and parral and parral not in RIEGO_DATA.get(cabezal, {}):
+            raise forms.ValidationError('Parral no válido para el cabezal seleccionado.')
+            
+        # Validación de válvula
+        if cabezal and parral and valvula_abierta:
+            valid_valvulas = RIEGO_DATA.get(cabezal, {}).get(parral, [])
+            if valvula_abierta not in valid_valvulas:
+                raise forms.ValidationError('Válvula no válida para el parral seleccionado.')
+            
+        return cleaned_data
+#Form for consult Irrigation and Fertilization
+class FiltrosRiegoForm(forms.Form):
     fecha_desde = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
         label='Fecha Desde'
     )
     fecha_hasta = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
         label='Fecha Hasta'
     )
     cabezal = forms.ChoiceField(
-        choices=[('', 'Todos')] + [(c, c) for c in RIEGO_DATA.keys()],
         required=False,
-        widget=forms.Select(attrs={'class': 'form-control'})
+        choices=[('', 'Todos')],  # Las opciones se cargan dinámicamente en la vista
+        widget=forms.Select(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
+        label='Cabezal'
     )
     parral = forms.ChoiceField(
-        choices=[('', 'Todos')], # Se llenará con JS
         required=False,
-        widget=forms.Select(attrs={'class': 'form-control'})
+        choices=[('', 'Todos')],  # Las opciones se cargan dinámicamente en la vista
+        widget=forms.Select(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }),
+        label='Parral/Potrero'
     )
     responsable = forms.CharField(
-        max_length=100,
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': 'Nombre del responsable', 'class': 'form-control'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'Buscar responsable...'
+        }),
+        label='Responsable'
     )
 
-    def clean(self):
-        cleaned_data = super().clean()
-        fecha_desde = cleaned_data.get('fecha_desde')
-        fecha_hasta = cleaned_data.get('fecha_hasta')
-        if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
-            self.add_error('fecha_hasta', 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".')
-        return cleaned_data
 
-#Model for Harvest Records  
+#Model for Harvest Records
 # Form for Cosecha upload
 class CosechaForm(forms.ModelForm):
     class Meta:
@@ -487,4 +577,13 @@ class FiltrosCosechaForm(forms.Form):
             'placeholder': 'Buscar variedad...'
         })
     )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
+            self.add_error('fecha_fin', 'La fecha "Fin" no puede ser anterior a la fecha "Inicio".')
+        return cleaned_data
 

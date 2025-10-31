@@ -429,16 +429,43 @@ def cargar_riego(request):
 @permission_required('contabilidad_loslirios.can_view_riego', raise_exception=True)
 @login_required
 def consultar_riego(request):
-    registros_filtrados = _obtener_riegos_filtrados(request)
-    form = FormConsultaRiego(request.GET) # Usamos el nuevo formulario
-
-    paginator = Paginator(registros_filtrados, 10)
+    # Crear formulario de filtros
+    form_filtros = FiltrosRiegoForm(request.GET or None)
+    
+    # Poblar opciones dinámicas
+    cabezales = RegistroRiego.objects.values_list('cabezal', flat=True).distinct().order_by('cabezal')
+    form_filtros.fields['cabezal'].choices = [('', 'Todos')] + [(c, c) for c in cabezales if c]
+    
+    # Obtener registros base
+    registros = RegistroRiego.objects.all()
+    
+    # Aplicar filtros
+    if form_filtros.is_valid():
+        fecha_desde = form_filtros.cleaned_data.get('fecha_desde')
+        fecha_hasta = form_filtros.cleaned_data.get('fecha_hasta')
+        cabezal = form_filtros.cleaned_data.get('cabezal')
+        parral = form_filtros.cleaned_data.get('parral')
+        responsable = form_filtros.cleaned_data.get('responsable')
+        
+        if fecha_desde:
+            registros = registros.filter(inicio__date__gte=fecha_desde)
+        if fecha_hasta:
+            registros = registros.filter(inicio__date__lte=fecha_hasta)
+        if cabezal:
+            registros = registros.filter(cabezal=cabezal)
+        if parral:
+            registros = registros.filter(parral__icontains=parral)
+        if responsable:
+            registros = registros.filter(responsable__icontains=responsable)
+    
+    # Paginación
+    paginator = Paginator(registros.order_by('-inicio'), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
+    
     context = {
-        'form': form, # Pasamos el formulario al contexto
-        'page_obj': page_obj
+        'form_filtros': form_filtros,  # Cambiar nombre del formulario
+        'page_obj': page_obj,
     }
     return render(request, 'contabilidad_loslirios/produccion/consultar_riego.html', context)
 
@@ -446,29 +473,64 @@ def consultar_riego(request):
 @permission_required('contabilidad_loslirios.can_view_riego', raise_exception=True) # O un nuevo permiso de exportación si lo creas
 @login_required
 def exportar_riegos_csv(request):
-    registros = _obtener_riegos_filtrados(request)
-    response = HttpResponse(content_type='text/csv')
-    filename = f"registros_riego_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    # Crear la respuesta HTTP con tipo de contenido CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="registros_riego.csv"'
+    
+    # Configurar el writer CSV con codificación UTF-8
+    response.write('\ufeff'.encode('utf8'))  # BOM para Excel
     writer = csv.writer(response)
-
-    # Encabezados del CSV
+    
+    # Escribir encabezados 
     writer.writerow([
-        'Cabezal', 'Parral/Potrero', 'Valvulas Abiertas', 'Inicio', 'Fin', 
-        'Total Horas', 'Fertilizante', 'Litros', 'Responsable'
+        'Fecha/Hora Inicio', 
+        'Fecha/Hora Fin', 
+        'Cabezal', 
+        'Parral/Potrero', 
+        'Válvula Abierta',
+        'Total Horas',
+        'Fertilizante',
+        'Litros Fertilizante',
+        'Responsable'
     ])
-
-    # Datos
-    for r in registros:
+    
+    # Obtener los registros con los mismos filtros que la vista de consulta
+    form_filtros = FiltrosRiegoForm(request.GET or None)
+    registros = RegistroRiego.objects.all()
+    
+    # Aplicar filtros si el formulario es válido
+    if form_filtros.is_valid():
+        fecha_desde = form_filtros.cleaned_data.get('fecha_desde')
+        fecha_hasta = form_filtros.cleaned_data.get('fecha_hasta')
+        cabezal = form_filtros.cleaned_data.get('cabezal')
+        parral = form_filtros.cleaned_data.get('parral')
+        responsable = form_filtros.cleaned_data.get('responsable')
+        
+        if fecha_desde:
+            registros = registros.filter(inicio__date__gte=fecha_desde)
+        if fecha_hasta:
+            registros = registros.filter(inicio__date__lte=fecha_hasta)
+        if cabezal:
+            registros = registros.filter(cabezal=cabezal)
+        if parral:
+            registros = registros.filter(parral__icontains=parral)
+        if responsable:
+            registros = registros.filter(responsable__icontains=responsable)
+    
+    # Escribir los datos 
+    for r in registros.order_by('-inicio'):
         writer.writerow([
-            r.cabezal, r.parral, r.valvulas_abiertas,
-            r.inicio.strftime('%Y-%m-%d %H:%M'),
-            r.fin.strftime('%Y-%m-%d %H:%M'),
-            f"{r.total_horas:.2f}",
-            r.fertilizante_nombre or 'N/A',
-            f"{r.fertilizante_litros:.2f}" if r.fertilizante_litros is not None else 'N/A',
-            r.responsable
-        ])
+            r.inicio.strftime('%d/%m/%Y %H:%M') if r.inicio else '',
+            r.fin.strftime('%d/%m/%Y %H:%M') if r.fin else '',
+            r.cabezal or '',
+            r.parral or '',
+            r.valvula_abierta or '',
+            r.total_horas or '',
+            r.fertilizante_nombre or '',
+            r.fertilizante_litros or '',
+            r.responsable or ''
+            # Removido r.observaciones
+        ])  
     return response
 # Auxiliary function to get filtered irrigation records
 @login_required
@@ -477,7 +539,7 @@ def _obtener_riegos_filtrados(request):
     Función auxiliar para obtener los registros de riego filtrados.
     """
     registros = RegistroRiego.objects.all()
-    form = FormConsultaRiego(request.GET)
+    form = FiltrosRiegoForm(request.GET)
 
     if form.is_valid():
         filtros = Q()
@@ -570,7 +632,7 @@ def consultar_cosecha(request):
     total_kg = registros.aggregate(Sum('kg_totales'))['kg_totales__sum'] or 0
     
     # Paginación
-    paginator = Paginator(registros.order_by('-fecha', '-id'), 15)  # 15 registros por página
+    paginator = Paginator(registros.order_by('-fecha', '-id'), 5)  
     page_number = request.GET.get('page')
     registros_paginados = paginator.get_page(page_number)
     
