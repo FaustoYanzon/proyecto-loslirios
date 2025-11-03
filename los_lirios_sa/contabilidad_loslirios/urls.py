@@ -7,10 +7,6 @@ urlpatterns = [
     path('api/parcelas/', views.parcelas_geojson, name='parcelas_geojson'),
 #URLs for Administracion
     path('contabilidad/', views.contabilidad, name='contabilidad'),
-    #URLs for Jornales
-    path('administracion/jornales/cargar', views.cargar_jornal, name='cargar_jornal'),
-    path('administracion/jornales/consultar', views.consultar_jornal, name='consultar_jornal'),
-    path('administracion/jornales/exportar/csv', views.exportar_jornales_csv, name='exportar_jornales_csv'),
     #URLs for Movimientos
     #Egresos
     path('administracion/movimientos/cargar', views.cargar_movimiento, name='cargar_movimiento'), 
@@ -25,6 +21,10 @@ urlpatterns = [
     path('administracion/ingresos/exportar/csv', views.exportar_ingresos_csv, name='exportar_ingresos_csv'),
 #URLs for Producción
     path('produccion/', views.produccion, name='produccion'),
+    #URLs for Jornales
+    path('produccion/jornales/cargar', views.cargar_jornal, name='cargar_jornal'),
+    path('produccion/jornales/consultar', views.consultar_jornal, name='consultar_jornal'),
+    path('produccion/jornales/exportar/csv', views.exportar_jornales_csv, name='exportar_jornales_csv'),
     # URLs para Riego y Fertilización
     path('produccion/riego/cargar/', views.cargar_riego, name='cargar_riego'),
     path('produccion/riego/consultar/', views.consultar_riego, name='consultar_riego'),

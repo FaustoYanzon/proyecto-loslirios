@@ -85,7 +85,7 @@
             font-weight: 600;
         }
 
-        /* === SIDEBAR CORREGIDA === */
+        /* === SIDEBAR === */
         .sidebar {
             position: fixed;
             left: 0;
@@ -95,7 +95,7 @@
             border-right: 1px solid #475569;
             box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            width: 280px;
+            width: 250px;
             z-index: 900;
             overflow: visible;
         }
@@ -136,6 +136,30 @@
             font-size: 1.5rem;
             min-width: 24px;
             flex-shrink: 0; /* AGREGADO */
+        }
+
+        /* --- ESTILOS PARA LA SIDEBAR COLAPSADA --- */
+
+        .sidebar-collapsed span {
+            display: none;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .sidebar-collapsed .fa-chevron-down {
+            display: none;
+        }
+
+        .sidebar-collapsed .sub-menu {
+            display: none;
+        }
+
+        .sidebar-collapsed .nav-link {
+            justify-content: center;
+        }
+
+        .sidebar-collapsed .icon-class {
+            margin-right: 0; 
         }
 
         /* === BOTÓN TOGGLE MEJORADO === */
@@ -253,7 +277,7 @@
             opacity: 1;
         }
 
-        /* === ESTADO COLAPSADO CORREGIDO === */
+        /* === ESTADO COLAPSADO === */
         .sidebar-collapsed .nav-text,
         .sidebar-collapsed .sidebar-brand-text {
             opacity: 0;
@@ -323,7 +347,7 @@
 
         /* === MAIN CONTENT === */
         .main-content {
-            margin-left: 280px;
+            margin-left: 250px;
             margin-top: 80px;
             margin-bottom: 32px;
             padding: 2rem;
@@ -433,8 +457,7 @@
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <a href="{% url 'main' %}" class="sidebar-brand">
-                <i class="fas fa-seedling"></i>
-                <span class="sidebar-brand-text">Panel de Control</span>
+                <span class="sidebar-brand-text">Inicio</span>
             </a>
             
             <button id="toggleSidebar" class="toggle-btn" title="Contraer menú">

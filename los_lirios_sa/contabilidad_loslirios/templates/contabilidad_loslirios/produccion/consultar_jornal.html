@@ -2,15 +2,15 @@
 {% load static %}
 {% load humanize %}
 
-{% block titulo %}Consultar Movimientos - Los Lirios SA{% endblock titulo %}
+{% block titulo %}Consultar Jornales - Los Lirios SA{% endblock titulo %}
 
 {% block contenido %}
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center">
-            <a href="{% url 'contabilidad' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
-                <i class="fas fa-arrow-left mr-2"></i> Volver a Administración
+            <a href="{% url 'produccion' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Volver a Producción
             </a>
-            <h1 class="text-2xl font-semibold text-gray-800 ml-4">Consultar Movimientos Financieros</h1>
+            <h1 class="text-2xl font-semibold text-gray-800 ml-4">Consultar Jornales</h1>
         </div>
     </div>
 
@@ -20,9 +20,7 @@
             <i class="fas fa-filter mr-2"></i>Filtros de Búsqueda
         </h2>
         
-        <form method="GET" id="filtro-movimiento-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {% csrf_token %} 
-
+        <form method="GET" id="filtro-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
                 <label for="{{ form.fecha_desde.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
                     {{ form.fecha_desde.label }}
@@ -52,57 +50,15 @@
             </div>
 
             <div>
-                <label for="{{ form.origen.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ form.origen.label }}
+                <label for="{{ form.nombre_trabajador.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form.nombre_trabajador.label }}
                 </label>
-                <select name="{{ form.origen.name }}" 
-                        id="{{ form.origen.id_for_label }}"
-                        class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
-                    <option value="">Todos</option>
-                    <option value="Oficial" {% if form.origen.value == 'Oficial' %}selected{% endif %}>Oficial</option>
-                    <option value="No Oficial" {% if form.origen.value == 'No Oficial' %}selected{% endif %}>No Oficial</option>
-                </select>
-                {% if form.origen.errors %}
-                    <p class="text-red-500 text-xs italic mt-1">{{ form.origen.errors }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="{{ form.finca.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ form.finca.label }}
-                </label>
-                <select name="{{ form.finca.name }}" 
-                        id="{{ form.finca.id_for_label }}"
-                        class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
-                    <option value="">Todas</option>
-                    <option value="Los Mimbres" {% if form.finca.value == 'Los Mimbres' %}selected{% endif %}>Los Mimbres</option>
-                    <option value="Media Agua" {% if form.finca.value == 'Media Agua' %}selected{% endif %}>Media Agua</option>
-                    <option value="Caucete" {% if form.finca.value == 'Caucete' %}selected{% endif %}>Caucete</option>
-                </select>
-                {% if form.finca.errors %}
-                    <p class="text-red-500 text-xs italic mt-1">{{ form.finca.errors }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="{{ form.tipo.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ form.tipo.label }}
-                </label>
-                <select name="{{ form.tipo.name }}" 
-                        id="{{ form.tipo.id_for_label }}"
-                        class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
-                    <option value="">Todos</option>
-                    <option value="Sueldos Personal" {% if form.tipo.value == 'Sueldos Personal' %}selected{% endif %}>Sueldos Personal</option>
-                    <option value="Produccion" {% if form.tipo.value == 'Produccion' %}selected{% endif %}>Producción</option>
-                    <option value="Inversion" {% if form.tipo.value == 'Inversion' %}selected{% endif %}>Inversión</option>
-                    <option value="Repuestos y Reparaciones" {% if form.tipo.value == 'Repuestos y Reparaciones' %}selected{% endif %}>Repuestos y Reparaciones</option>
-                    <option value="Insumos Varios" {% if form.tipo.value == 'Insumos Varios' %}selected{% endif %}>Insumos Varios</option>
-                    <option value="Impuestos o Servicios" {% if form.tipo.value == 'Impuestos o Servicios' %}selected{% endif %}>Impuestos o Servicios</option>
-                    <option value="Energia" {% if form.tipo.value == 'Energia' %}selected{% endif %}>Energía</option>
-                </select>
-                {% if form.tipo.errors %}
-                    <p class="text-red-500 text-xs italic mt-1">{{ form.tipo.errors }}</p>
-                {% endif %}
+                <input type="text" 
+                       name="{{ form.nombre_trabajador.name }}" 
+                       id="{{ form.nombre_trabajador.id_for_label }}"
+                       value="{{ form.nombre_trabajador.value|default:'' }}"
+                       placeholder="Nombre del Empleado"
+                       class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
             </div>
 
             <div>
@@ -113,29 +69,48 @@
                         id="{{ form.clasificacion.id_for_label }}"
                         class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                     <option value="">Todas</option>
-                    <!-- Las opciones se cargan dinámicamente via JavaScript -->
+                    <option value="General" {% if form.clasificacion.value == 'General' %}selected{% endif %}>General</option>
+                    <option value="Verano" {% if form.clasificacion.value == 'Verano' %}selected{% endif %}>Verano</option>
+                    <option value="Otoño" {% if form.clasificacion.value == 'Otoño' %}selected{% endif %}>Otoño</option>
+                    <option value="Invierno" {% if form.clasificacion.value == 'Invierno' %}selected{% endif %}>Invierno</option>
+                    <option value="Primavera" {% if form.clasificacion.value == 'Primavera' %}selected{% endif %}>Primavera</option>
                 </select>
-                {% if form.clasificacion.errors %}
-                    <p class="text-red-500 text-xs italic mt-1">{{ form.clasificacion.errors }}</p>
-                {% endif %}
             </div>
 
             <div>
-                <label for="{{ form.forma_pago.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ form.forma_pago.label }}
+                <label for="{{ form.tarea.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form.tarea.label }}
                 </label>
-                <select name="{{ form.forma_pago.name }}" 
-                        id="{{ form.forma_pago.id_for_label }}"
+                <select name="{{ form.tarea.name }}" 
+                        id="{{ form.tarea.id_for_label }}"
                         class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                     <option value="">Todas</option>
-                    <option value="Efectivo" {% if form.forma_pago.value == 'Efectivo' %}selected{% endif %}>Efectivo</option>
-                    <option value="Transferencia" {% if form.forma_pago.value == 'Transferencia' %}selected{% endif %}>Transferencia</option>
-                    <option value="Credito" {% if form.forma_pago.value == 'Credito' %}selected{% endif %}>Crédito</option>
-                    <option value="Cheque" {% if form.forma_pago.value == 'Cheque' %}selected{% endif %}>Cheque</option>
+                    <!-- Las opciones se cargan dinámicamente via JavaScript -->
                 </select>
-                {% if form.forma_pago.errors %}
-                    <p class="text-red-500 text-xs italic mt-1">{{ form.forma_pago.errors }}</p>
-                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.detalle.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Detalle
+                </label>
+                <input type="text" 
+                       name="{{ form.detalle.name }}" 
+                       id="{{ form.detalle.id_for_label }}"
+                       value="{{ form.detalle.value|default:'' }}"
+                       placeholder="Buscar en detalles"
+                       class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+            </div>
+
+            <div>
+                <label for="{{ form.ubicacion.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form.ubicacion.label }}
+                </label>
+                <input type="text" 
+                       name="{{ form.ubicacion.name }}" 
+                       id="{{ form.ubicacion.id_for_label }}"
+                       value="{{ form.ubicacion.value|default:'' }}"
+                       placeholder="Ubicación"
+                       class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
             </div>
 
             <div class="flex items-end space-x-2">
@@ -163,7 +138,7 @@
                 <i class="fas fa-list-alt text-blue-600 text-2xl mr-3"></i>
                 <div>
                     <p class="text-sm text-blue-600 font-medium">Total Registros</p>
-                    <p class="text-2xl font-bold text-blue-800">{{ movimientos.paginator.count|intcomma }}</p>
+                    <p class="text-2xl font-bold text-blue-800">{{ registros.paginator.count|intcomma }}</p>
                 </div>
             </div>
         </div>
@@ -173,7 +148,7 @@
                 <i class="fas fa-download text-orange-600 text-2xl mr-3"></i>
                 <div>
                     <p class="text-sm text-orange-600 font-medium">Exportar</p>
-                    <a href="#" id="export-movimiento-csv-btn" 
+                    <a href="#" id="export-csv-btn" 
                        class="text-orange-800 hover:text-orange-900 font-semibold">
                         Descargar CSV
                     </a>
@@ -189,56 +164,55 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finca</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trabajador</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clasificación</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarea</th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detalle</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Moneda</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Forma de Pago</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Unit.</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto Total</th>
                         <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    {% for movimiento in movimientos %}
+                    {% for registro in registros %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ movimiento.fecha|date:"d/m/Y" }}
+                            {{ registro.fecha|date:"d/m/Y" }}
                         </td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.nombre_trabajador }}</td>
                         <td class="px-3 py-4 whitespace-nowrap">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                {% if movimiento.origen == 'Oficial' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
-                                {{ movimiento.origen }}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                {{ registro.get_clasificacion_display }}
                             </span>
                         </td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ movimiento.finca }}</td>
-                        <td class="px-3 py-4 whitespace-nowrap">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {{ movimiento.tipo }}
-                            </span>
-                        </td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ movimiento.clasificacion }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.tarea }}</td>
                         <td class="px-3 py-4 text-sm text-gray-900">
-                            <div class="max-w-xs truncate" title="{{ movimiento.detalle }}">
-                                {{ movimiento.detalle|default:"—" }}
+                            <div class="max-w-xs truncate" title="{{ registro.detalle }}">
+                                {{ registro.detalle|default:"—" }}
                             </div>
                         </td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 font-bold text-green-600">
-                            ${{ movimiento.monto|floatformat:2 }}
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ registro.cantidad }} {{ registro.unidad_medida }}
                         </td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ movimiento.moneda }}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ movimiento.forma_pago }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                            ${{ registro.precio|floatformat:2 }}
+                        </td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.ubicacion }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 font-bold text-green-600">
+                            ${{ registro.monto_total|floatformat:2 }}
+                        </td>
                         <td class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <div class="flex justify-center space-x-2">
-                                <button onclick="verDetalle({{ movimiento.id_movimiento }})" 
+                                <button onclick="verDetalle({{ registro.id_registro }})" 
                                         class="text-blue-600 hover:text-blue-900" title="Ver detalle">
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 <a href="#" class="text-green-600 hover:text-green-900" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <button onclick="confirmarEliminar({{ movimiento.id_movimiento }})" 
+                                <button onclick="confirmarEliminar({{ registro.id_registro }})" 
                                         class="text-red-600 hover:text-red-900" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -250,7 +224,7 @@
                         <td colspan="10" class="px-6 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-4xl mb-2"></i>
                             <p class="text-lg">No se encontraron registros</p>
-                            <p class="text-sm">Intenta ajustar los filtros o <a href="{% url 'cargar_movimiento' %}" class="text-blue-600 hover:text-blue-800">crea un nuevo registro</a></p>
+                            <p class="text-sm">Intenta ajustar los filtros o <a href="{% url 'cargar_jornal' %}" class="text-blue-600 hover:text-blue-800">crea un nuevo registro</a></p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -259,17 +233,17 @@
         </div>
 
         <!-- Paginación MEJORADA -->
-        {% if movimientos.has_other_pages %}
+        {% if registros.has_other_pages %}
         <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
             <div class="flex-1 flex justify-between sm:hidden">
-                {% if movimientos.has_previous %}
-                    <a href="?page={{ movimientos.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                {% if registros.has_previous %}
+                    <a href="?page={{ registros.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         Anterior
                     </a>
                 {% endif %}
-                {% if movimientos.has_next %}
-                    <a href="?page={{ movimientos.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                {% if registros.has_next %}
+                    <a href="?page={{ registros.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
                        class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         Siguiente
                     </a>
@@ -279,33 +253,33 @@
                 <div>
                     <p class="text-sm text-gray-700">
                         Mostrando 
-                        <span class="font-medium">{{ movimientos.start_index }}</span>
+                        <span class="font-medium">{{ registros.start_index }}</span>
                         a 
-                        <span class="font-medium">{{ movimientos.end_index }}</span>
+                        <span class="font-medium">{{ registros.end_index }}</span>
                         de 
-                        <span class="font-medium">{{ movimientos.paginator.count }}</span>
+                        <span class="font-medium">{{ registros.paginator.count }}</span>
                         registros
                     </p>
                 </div>
                 <div>
                     <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                        {% if movimientos.has_previous %}
+                        {% if registros.has_previous %}
                             <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                 <i class="fas fa-angle-double-left"></i>
                             </a>
-                            <a href="?page={{ movimientos.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                            <a href="?page={{ registros.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
                                class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                 <i class="fas fa-angle-left"></i>
                             </a>
                         {% endif %}
 
-                        {% for page_num in paginator.page_range %}
-                            {% if page_num == movimientos.number %}
+                        {% for page_num in registros.paginator.page_range %}
+                            {% if page_num == registros.number %}
                                 <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
                                     {{ page_num }}
                                 </span>
-                            {% elif page_num > movimientos.number|add:'-3' and page_num < movimientos.number|add:'3' %}
+                            {% elif page_num > registros.number|add:'-3' and page_num < registros.number|add:'3' %}
                                 <a href="?page={{ page_num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
                                     {{ page_num }}
@@ -313,12 +287,12 @@
                             {% endif %}
                         {% endfor %}
 
-                        {% if movimientos.has_next %}
-                            <a href="?page={{ movimientos.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                        {% if registros.has_next %}
+                            <a href="?page={{ registros.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
                                class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                 <i class="fas fa-angle-right"></i>
                             </a>
-                            <a href="?page={{ paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                            <a href="?page={{ registros.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                 <i class="fas fa-angle-double-right"></i>
                             </a>
@@ -335,7 +309,7 @@
         <div class="flex items-center justify-center min-h-screen px-4">
             <div class="bg-white rounded-lg max-w-md w-full p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold">Detalle del Movimiento</h3>
+                    <h3 class="text-lg font-semibold">Detalle del Jornal</h3>
                     <button onclick="cerrarModal()" class="text-gray-500 hover:text-gray-700">
                         <i class="fas fa-times"></i>
                     </button>
@@ -350,67 +324,67 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // --- Lógica para dropdowns dinámicos en filtros ---
-            const tipoSelect = document.getElementById('{{ form.tipo.id_for_label }}');
             const clasificacionSelect = document.getElementById('{{ form.clasificacion.id_for_label }}');
-            const clasificacionActual = "{{ request.GET.clasificacion|default:'' }}";
+            const tareaSelect = document.getElementById('{{ form.tarea.id_for_label }}');
+            const tareaActual = "{{ request.GET.tarea|default:'' }}";
 
-            function actualizarClasificaciones() {
-                const tipo = tipoSelect.value;
-                if (!tipo) {
-                    clasificacionSelect.innerHTML = '<option value="">Todas</option>';
+            function actualizarTareas() {
+                const clasificacion = clasificacionSelect.value;
+                if (!clasificacion) {
+                    tareaSelect.innerHTML = '<option value="">Todas</option>';
                     return;
                 }
 
-                clasificacionSelect.innerHTML = '<option value="">Cargando...</option>';
-                const url = `{% url 'get_classifications_for_type' '0' %}`.replace('0', tipo);
+                tareaSelect.innerHTML = '<option value="">Cargando...</option>';
+                const url = `{% url 'get_tasks_for_classification' '0' %}`.replace('0', clasificacion);
 
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
-                        clasificacionSelect.innerHTML = '<option value="">Todas</option>';
-                        data.classifications.forEach(function(classification) {
-                            const option = new Option(classification, classification);
-                            if (classification === clasificacionActual) {
+                        tareaSelect.innerHTML = '<option value="">Todas</option>';
+                        data.tasks.forEach(function(task) {
+                            const option = new Option(task, task);
+                            if (task === tareaActual) {
                                 option.selected = true;
                             }
-                            clasificacionSelect.add(option);
+                            tareaSelect.add(option);
                         });
                     })
                     .catch(error => {
-                        console.error('Error al obtener las clasificaciones:', error);
-                        clasificacionSelect.innerHTML = '<option value="">Error al cargar</option>';
+                        console.error('Error al obtener las tareas:', error);
+                        tareaSelect.innerHTML = '<option value="">Error al cargar</option>';
                     });
             }
 
-            if (tipoSelect) {
-                tipoSelect.addEventListener('change', actualizarClasificaciones);
-                actualizarClasificaciones();
+            if (clasificacionSelect) {
+                clasificacionSelect.addEventListener('change', actualizarTareas);
+                actualizarTareas();
             }
 
             // --- Lógica para el botón de exportación ---
-            const filtroForm = document.getElementById('filtro-movimiento-form');
-            const exportCsvBtn = document.getElementById('export-movimiento-csv-btn');
+            const filtroForm = document.getElementById('filtro-form');
+            const exportCsvBtn = document.getElementById('export-csv-btn');
 
-            function updateExportLinks() {
+            function updateExportLink() {
                 const formData = new URLSearchParams(new FormData(filtroForm)).toString();
-                const baseCsvUrl = "{% url 'exportar_movimientos_csv' %}";
+                const baseCsvUrl = "{% url 'exportar_jornales_csv' %}";
                 exportCsvBtn.href = `${baseCsvUrl}?${formData}`;
             }
 
             if (filtroForm && exportCsvBtn) {
-                filtroForm.addEventListener('change', updateExportLinks);
-                updateExportLinks();
+                filtroForm.addEventListener('change', updateExportLink);
+                updateExportLink();
             }
         });
 
         // Funciones para acciones de tabla
         function verDetalle(id) {
-            alert('Ver detalle del movimiento ID: ' + id);
+            alert('Ver detalle del jornal ID: ' + id);
         }
 
         function confirmarEliminar(id) {
             if (confirm('¿Está seguro de que desea eliminar este registro?')) {
-                alert('Eliminar movimiento ID: ' + id);
+                alert('Eliminar jornal ID: ' + id);
             }
         }
 

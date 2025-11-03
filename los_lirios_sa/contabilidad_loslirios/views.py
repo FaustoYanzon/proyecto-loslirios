@@ -72,137 +72,6 @@ def parcelas_geojson(request):
 def contabilidad(request):
     return render(request, 'contabilidad_loslirios/contabilidad.html')
 
-
-#Logic for Jornales
-#API endpoint to get tasks based on classification
-def get_tasks_for_classification(request, classification):
-    """
-    Devuelve una lista de tareas en formato JSON para una clasificación dada.
-    """
-    tasks = TAREAS_POR_CLASIFICACION.get(classification, [])
-    return JsonResponse({'tasks': tasks})
-
-#Logic for cargar_jornal page:
-@permission_required('contabilidad_loslirios.can_add_jornales', raise_exception=True)
-@login_required
-def cargar_jornal(request):
-    RegistroTrabajoFormSet = modelformset_factory(
-        registro_trabajo,
-        form=FormRegistroTrabajo,
-        extra=3,  
-        can_delete=False
-    )
-    if request.method == 'POST':
-        formset = RegistroTrabajoFormSet(request.POST)
-        if formset.is_valid():
-            formset.save()
-            messages.success(request, 'Registros de jornal guardados exitosamente.')
-            return redirect('cargar_jornal')
-        else:
-            messages.error(request, 'Error al guardar los registros de jornal.')
-    else:
-        formset = RegistroTrabajoFormSet(queryset=registro_trabajo.objects.none())
-    return render(request, 'contabilidad_loslirios/administracion/cargar_jornal.html', {'formset': formset})
-
-#Logic for consultar_jornal page:
-@permission_required('contabilidad_loslirios.can_view_jornales', raise_exception=True)
-@login_required
-def consultar_jornal(request):
-    registros_filtrados = _obtener_registros_filtrados(request)
-    form = FormConsultaJornal(request.GET)
-
-    # --- Lógica de Paginación ---
-    paginator = Paginator(registros_filtrados, 4)
-    page = request.GET.get('page') 
-
-    try:
-        registros_paginados = paginator.page(page)
-    except PageNotAnInteger:
-        registros_paginados = paginator.page(1)
-    except EmptyPage:
-        registros_paginados = paginator.page(paginator.num_pages)
-
-    context = {
-        'form': form,
-        'registros': registros_paginados,
-        'paginator': paginator,
-    }
-    return render(request, 'contabilidad_loslirios/administracion/consultar_jornal.html', context)
-
-# Logic for exportar_jornal page
-#Auxiliary function to export filtered records to CSV
-@login_required
-def _obtener_registros_filtrados(request):
-    """
-    Función auxiliar para obtener los registros filtrados basada en los parámetros GET.
-    Reutiliza la lógica de filtrado de consultar_jornal.
-    """
-    form = FormConsultaJornal(request.GET)
-    registros = registro_trabajo.objects.all().order_by('-fecha')
-
-    if form.is_valid():
-        fecha_desde = form.cleaned_data.get('fecha_desde')
-        fecha_hasta = form.cleaned_data.get('fecha_hasta')
-        nombre_trabajador = form.cleaned_data.get('nombre_trabajador')
-        tarea = form.cleaned_data.get('tarea')
-        ubicacion = form.cleaned_data.get('ubicacion')
-        clasificacion = form.cleaned_data.get('clasificacion')
-        detalle = form.cleaned_data.get('detalle') 
-        monto_total = form.cleaned_data.get('monto_total')
-
-        filtros = Q()
-
-        if fecha_desde:
-            filtros &= Q(fecha__gte=fecha_desde)
-        if fecha_hasta:
-            filtros &= Q(fecha__lte=fecha_hasta)
-        if nombre_trabajador:
-            filtros &= Q(nombre_trabajador__icontains=nombre_trabajador)
-        if tarea:
-            filtros &= Q(tarea=tarea) 
-        if ubicacion:
-            filtros &= Q(ubicacion__icontains=ubicacion) 
-        if clasificacion:
-            filtros &= Q(clasificacion=clasificacion)
-        if detalle:
-            filtros &= Q(detalle__icontains=detalle) 
-
-        registros = registros.filter(filtros)
-
-    return registros
-
-#import csv
-@permission_required('contabilidad_loslirios.can_export_jornales', raise_exception=True)
-@login_required
-def exportar_jornales_csv(request):
-    registros = _obtener_registros_filtrados(request)
-
-    response = HttpResponse(content_type='text/csv')
-    filename = f"jornales_consulta_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-
-    writer = csv.writer(response)
-
-    # Encabezados del CSV (Añadimos 'Detalle')
-    writer.writerow(['Fecha', 'Nombre Trabajador', 'Clasificacion', 'Tarea', 'Detalle', 'Cantidad', 'Unidad Medida', 'Precio', 'Ubicacion'])
-
-    # Datos
-    for registro in registros:
-        writer.writerow([
-            registro.fecha.strftime('%Y-%m-%d'),
-            registro.nombre_trabajador,
-            registro.clasificacion,
-            registro.tarea,
-            registro.detalle, 
-            registro.cantidad,
-            registro.unidad_medida,
-            f"{registro.precio:.2f}", 
-            registro.ubicacion,
-            registro.monto_total,
-        ])
-    return response
-
-
 #Logic for movimientos
 # API endpoint to get classifications based on type
 def get_classifications_for_type(request, tipo):
@@ -387,6 +256,137 @@ def exportar_ingresos_csv(request):
 def produccion(request):
     return render(request, 'contabilidad_loslirios/produccion.html')
 
+#Logic for Jornales
+#API endpoint to get tasks based on classification
+def get_tasks_for_classification(request, classification):
+    """
+    Devuelve una lista de tareas en formato JSON para una clasificación dada.
+    """
+    tasks = TAREAS_POR_CLASIFICACION.get(classification, [])
+    return JsonResponse({'tasks': tasks})
+
+#Logic for cargar_jornal page:
+@permission_required('contabilidad_loslirios.can_add_jornales', raise_exception=True)
+@login_required
+def cargar_jornal(request):
+    RegistroTrabajoFormSet = modelformset_factory(
+        registro_trabajo,
+        form=FormRegistroTrabajo,
+        extra=3,  
+        can_delete=False
+    )
+    if request.method == 'POST':
+        formset = RegistroTrabajoFormSet(request.POST)
+        if formset.is_valid():
+            formset.save()
+            messages.success(request, 'Registros de jornal guardados exitosamente.')
+            return redirect('cargar_jornal')
+        else:
+            messages.error(request, 'Error al guardar los registros de jornal.')
+    else:
+        formset = RegistroTrabajoFormSet(queryset=registro_trabajo.objects.none())
+    return render(request, 'contabilidad_loslirios/produccion/cargar_jornal.html', {'formset': formset})
+
+#Logic for consultar_jornal page:
+@permission_required('contabilidad_loslirios.can_view_jornales', raise_exception=True)
+@login_required
+def consultar_jornal(request):
+    registros_filtrados = _obtener_registros_filtrados(request)
+    form = FormConsultaJornal(request.GET)
+
+    # --- Lógica de Paginación ---
+    paginator = Paginator(registros_filtrados, 4)
+    page = request.GET.get('page') 
+
+    try:
+        registros_paginados = paginator.page(page)
+    except PageNotAnInteger:
+        registros_paginados = paginator.page(1)
+    except EmptyPage:
+        registros_paginados = paginator.page(paginator.num_pages)
+
+    context = {
+        'form': form,
+        'registros': registros_paginados,
+        'paginator': paginator,
+    }
+    return render(request, 'contabilidad_loslirios/produccion/consultar_jornal.html', context)
+
+# Logic for exportar_jornal page
+#Auxiliary function to export filtered records to CSV
+@login_required
+def _obtener_registros_filtrados(request):
+    """
+    Función auxiliar para obtener los registros filtrados basada en los parámetros GET.
+    Reutiliza la lógica de filtrado de consultar_jornal.
+    """
+    form = FormConsultaJornal(request.GET)
+    registros = registro_trabajo.objects.all().order_by('-fecha')
+
+    if form.is_valid():
+        fecha_desde = form.cleaned_data.get('fecha_desde')
+        fecha_hasta = form.cleaned_data.get('fecha_hasta')
+        nombre_trabajador = form.cleaned_data.get('nombre_trabajador')
+        tarea = form.cleaned_data.get('tarea')
+        ubicacion = form.cleaned_data.get('ubicacion')
+        clasificacion = form.cleaned_data.get('clasificacion')
+        detalle = form.cleaned_data.get('detalle') 
+        monto_total = form.cleaned_data.get('monto_total')
+
+        filtros = Q()
+
+        if fecha_desde:
+            filtros &= Q(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            filtros &= Q(fecha__lte=fecha_hasta)
+        if nombre_trabajador:
+            filtros &= Q(nombre_trabajador__icontains=nombre_trabajador)
+        if tarea:
+            filtros &= Q(tarea=tarea) 
+        if ubicacion:
+            filtros &= Q(ubicacion__icontains=ubicacion) 
+        if clasificacion:
+            filtros &= Q(clasificacion=clasificacion)
+        if detalle:
+            filtros &= Q(detalle__icontains=detalle) 
+
+        registros = registros.filter(filtros)
+
+    return registros
+
+#import csv
+@permission_required('contabilidad_loslirios.can_export_jornales', raise_exception=True)
+@login_required
+def exportar_jornales_csv(request):
+    registros = _obtener_registros_filtrados(request)
+
+    response = HttpResponse(content_type='text/csv')
+    filename = f"jornales_consulta_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+
+    # Encabezados del CSV 
+    writer.writerow(['Fecha', 'Nombre Trabajador', 'Clasificacion', 'Tarea', 'Detalle', 'Cantidad', 'Unidad Medida', 'Precio', 'Ubicacion'])
+
+    # Datos
+    for registro in registros:
+        writer.writerow([
+            registro.fecha.strftime('%Y-%m-%d'),
+            registro.nombre_trabajador,
+            registro.clasificacion,
+            registro.tarea,
+            registro.detalle, 
+            registro.cantidad,
+            registro.unidad_medida,
+            f"{registro.precio:.2f}", 
+            registro.ubicacion,
+            registro.monto_total,
+        ])
+    return response
+
+
+#Logic for riego y fertilización
 # API endpoint to get parrales based on the selected cabezal
 def get_parrales_for_cabezal(request, cabezal):
     """
