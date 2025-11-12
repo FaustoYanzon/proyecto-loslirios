@@ -15,6 +15,10 @@ urlpatterns = [
     #APIs
     path('api/administracion/get-tasks/<str:classification>/', views.get_tasks_for_classification, name='get_tasks_for_classification'),
     path('api/administracion/get-classifications/<str:tipo>/', views.get_classifications_for_type, name='get_classifications_for_type'),
+    path('api/ingresos/get-destinos/', views.get_destinos_ingresos, name='get_destinos_ingresos'),
+    path('api/ingresos/get-compradores/', views.get_compradores_ingresos, name='get_compradores_ingresos'),
+    path('api/ingresos/agregar-destino/', views.agregar_destino_ingreso, name='agregar_destino_ingreso'),
+    path('api/ingresos/agregar-comprador/', views.agregar_comprador_ingreso, name='agregar_comprador_ingreso'),
     #Ingresos
     path('administracion/ingresos/cargar', views.cargar_ingresos, name='cargar_ingresos'),
     path('administracion/ingresos/consultar', views.consultar_ingresos, name='consultar_ingresos'),

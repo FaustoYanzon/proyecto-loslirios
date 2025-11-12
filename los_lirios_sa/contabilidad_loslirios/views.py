@@ -19,11 +19,30 @@ from datetime import datetime
 from collections import defaultdict
 
 # Create your views here.
-
 #Logic for main page
 @login_required
 def main(request):
-    return render(request, 'contabilidad_loslirios/main.html')
+    # Obtener cheques y echeques próximos a vencer (próximos 30 días)
+    from datetime import datetime, timedelta
+    
+    fecha_limite = datetime.now().date() + timedelta(days=30)
+    
+    # Obtener cheques de ingresos pendientes
+    cheques_pendientes = IngresoFinanciero.objects.filter(
+        forma_pago__in=['Cheque', 'Echeque'],
+        fecha_pago__isnull=False,
+        fecha_pago__gte=datetime.now().date(),  # Solo fechas futuras o de hoy
+        fecha_pago__lte=fecha_limite  # Dentro de los próximos 30 días
+    ).select_related().order_by('fecha_pago')
+    
+    context = {
+        'cheques_pendientes': cheques_pendientes,
+        'fecha_limite': fecha_limite,
+        'total_cheques': cheques_pendientes.count(),
+        'monto_total_pendiente': sum(cheque.monto for cheque in cheques_pendientes)
+    }
+    
+    return render(request, 'contabilidad_loslirios/main.html', context)
 
 #API endpoint to get all parcelas in GeoJSON format
 def parcelas_geojson(request):
@@ -164,6 +183,52 @@ def exportar_movimientos_csv(request):
     return response
 
 #Logic for ingresos page:
+def get_destinos_ingresos(request):
+    """API para obtener todos los destinos disponibles"""
+    # Destinos predefinidos
+    destinos_predefinidos = [choice[0] for choice in DESTINO_INGRESOS_CHOICES]
+    
+    # Destinos personalizados
+    destinos_personalizados = list(DestinoIngreso.objects.values_list('nombre', flat=True))
+    
+    # Combinar y eliminar duplicados
+    todos_destinos = list(set(destinos_predefinidos + destinos_personalizados))
+    todos_destinos.sort()
+    
+    return JsonResponse({'destinos': todos_destinos})
+
+def get_compradores_ingresos(request):
+    """API para obtener todos los compradores disponibles"""
+    # Compradores personalizados (por ahora no hay predefinidos)
+    compradores = list(CompradorIngreso.objects.values_list('nombre', flat=True))
+    compradores.sort()
+    
+    return JsonResponse({'compradores': compradores})
+
+def agregar_destino_ingreso(request):
+    """API para agregar un nuevo destino personalizado"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        if nombre:
+            destino, created = DestinoIngreso.objects.get_or_create(nombre=nombre)
+            if created:
+                return JsonResponse({'success': True, 'message': 'Destino agregado exitosamente'})
+            else:
+                return JsonResponse({'success': False, 'message': 'El destino ya existe'})
+    return JsonResponse({'success': False, 'message': 'Nombre requerido'})
+
+def agregar_comprador_ingreso(request):
+    """API para agregar un nuevo comprador personalizado"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        if nombre:
+            comprador, created = CompradorIngreso.objects.get_or_create(nombre=nombre)
+            if created:
+                return JsonResponse({'success': True, 'message': 'Comprador agregado exitosamente'})
+            else:
+                return JsonResponse({'success': False, 'message': 'El comprador ya existe'})
+    return JsonResponse({'success': False, 'message': 'Nombre requerido'})
+
 #Logic for cargar_ingresos page:
 @permission_required('contabilidad_loslirios.can_view_ingresos', raise_exception=True)
 @login_required
@@ -185,7 +250,7 @@ def cargar_ingresos(request):
 @login_required
 def consultar_ingresos(request):
     ingresos_filtrados = _obtener_ingresos_filtrados(request)
-    form = FormConsultaIngreso(request.GET)
+    form = FormConsultaIngresos(request.GET)  
 
     # --- Lógica de Paginación ---
     paginator = Paginator(ingresos_filtrados, 4)  
@@ -209,18 +274,22 @@ def consultar_ingresos(request):
 #Auxiliary function to export filtered ingresos to CSV
 @login_required
 def _obtener_ingresos_filtrados(request):
-    form = FormConsultaIngreso(request.GET)
+    form = FormConsultaIngresos(request.GET)  # Cambiar nombre del formulario
     ingresos = IngresoFinanciero.objects.all() 
 
     if form.is_valid():
         filtros = Q()
         for field, value in form.cleaned_data.items():
             if value:
-                if field in ['fecha_desde']:
+                if field == 'fecha_desde':
                     filtros &= Q(fecha__gte=value)
-                elif field in ['fecha_hasta']:
+                elif field == 'fecha_hasta':
                     filtros &= Q(fecha__lte=value)
+                elif field in ['destino', 'comprador']:
+                    # Búsqueda parcial para campos de texto
+                    filtros &= Q(**{f'{field}__icontains': value})
                 else:
+                    # Búsqueda exacta para campos de selección
                     filtros &= Q(**{f'{field}__exact': value})
 
         ingresos = ingresos.filter(filtros)
@@ -237,13 +306,26 @@ def exportar_ingresos_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
 
-    # Nuevos encabezados
-    writer.writerow(['Fecha', 'Origen', 'Finca', 'Detalle', 'Monto', 'Moneda', 'Forma de Pago'])
+    # NUEVOS encabezados actualizados:
+    writer.writerow([
+        'Fecha', 'Origen', 'Destino', 'Comprador', 'Forma de Pago', 'Forma', 
+        'Banco', 'N° de Cheque', 'Fecha de Pago', 'Monto', 'Moneda'
+    ])
 
-    # Nuevos datos
+    # NUEVOS datos actualizados:
     for ingreso in ingresos:
         writer.writerow([
-            ingreso.fecha.strftime('%Y-%m-%d'), ingreso.origen, ingreso.finca, ingreso.detalle, f"{ingreso.monto:.2f}", ingreso.moneda, ingreso.forma_pago
+            ingreso.fecha.strftime('%Y-%m-%d'), 
+            ingreso.origen, 
+            ingreso.destino, 
+            ingreso.comprador,
+            ingreso.forma_pago,
+            ingreso.forma,
+            ingreso.banco or '',
+            ingreso.numero_cheque or '',
+            ingreso.fecha_pago.strftime('%Y-%m-%d') if ingreso.fecha_pago else '',
+            f"{ingreso.monto:.2f}", 
+            ingreso.moneda
         ])
     return response
 

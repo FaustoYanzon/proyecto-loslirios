@@ -191,35 +191,143 @@ class FormConsultaMovimiento(forms.Form):
 class FormIngresoFinanciero(forms.ModelForm):
     class Meta:
         model = IngresoFinanciero
-        fields = ['fecha', 'origen', 'finca', 'detalle', 'monto', 'moneda', 'forma_pago']
+        fields = [
+            'fecha',
+            'origen', 
+            'destino',
+            'comprador',
+            'forma_pago',
+            'forma',
+            'banco',
+            'numero_cheque', 
+            'fecha_pago',
+            'monto',
+            'moneda'
+        ]
+        
         widgets = {
-            'fecha': forms.DateInput(attrs={'type': 'date'}),
-            'detalle': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Detalles'}),
-            'monto': forms.NumberInput(attrs={'placeholder': '0.00'}),
+            'fecha': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'origen': forms.Select(attrs={'class': 'form-control'}),
+            'destino': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Seleccione o escriba un destino'
+            }),
+            'comprador': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Seleccione o escriba un comprador'
+            }),
+            'forma_pago': forms.Select(attrs={'class': 'form-control'}),
+            'forma': forms.Select(attrs={'class': 'form-control'}),
+            'banco': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre del banco'
+            }),
+            'numero_cheque': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número de cheque'
+            }),
+            'fecha_pago': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0'
+            }),
+            'moneda': forms.Select(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Aplicar clases CSS a todos los campos
         for field_name, field in self.fields.items():
+            if not hasattr(field.widget, 'attrs'):
+                field.widget.attrs = {}
             field.widget.attrs.update({'class': 'form-control'})
+            
+        # Hacer campos condicionales no requeridos inicialmente
+        self.fields['banco'].required = False
+        self.fields['numero_cheque'].required = False
+        self.fields['fecha_pago'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        forma_pago = cleaned_data.get('forma_pago')
+        banco = cleaned_data.get('banco')
+        numero_cheque = cleaned_data.get('numero_cheque')
+        fecha_pago = cleaned_data.get('fecha_pago')
+        
+        # Validar campos obligatorios para Cheque/Echeque
+        if forma_pago in ['Cheque', 'Echeque']:
+            if not banco:
+                raise forms.ValidationError({'banco': 'Este campo es obligatorio cuando la forma de pago es Cheque o Echeque.'})
+            if not numero_cheque:
+                raise forms.ValidationError({'numero_cheque': 'Este campo es obligatorio cuando la forma de pago es Cheque o Echeque.'})
+            if not fecha_pago:
+                raise forms.ValidationError({'fecha_pago': 'Este campo es obligatorio cuando la forma de pago es Cheque o Echeque.'})
+        
+        return cleaned_data
+
 #Form for consult financial incomes
-class FormConsultaIngreso(forms.Form):
-    fecha_desde = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
-    fecha_hasta = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
-    
-    origen = forms.ChoiceField(choices=[('', 'Todos')] + ORIGEN_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
-    finca = forms.ChoiceField(choices=[('', 'Todas')] + FINCA_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
-    moneda = forms.ChoiceField(choices=[('', 'Todas')] + MONEDA_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
-    forma_pago = forms.ChoiceField(choices=[('', 'Todas')] + FORMA_PAGO_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-control'}))
+class FormConsultaIngresos(forms.Form):
+    fecha_desde = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Desde'
+    )
+    fecha_hasta = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha Hasta'
+    )
+    origen = forms.ChoiceField(
+        choices=[('', 'Todos')] + ORIGEN_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Origen'
+    )
+    destino = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Buscar destino...'
+        }),
+        label='Destino'
+    )
+    comprador = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Buscar comprador...'
+        }),
+        label='Comprador'
+    )
+    forma_pago = forms.ChoiceField(
+        choices=[('', 'Todas')] + FORMA_PAGO_INGRESOS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Forma de Pago'
+    )
+    moneda = forms.ChoiceField(
+        choices=[('', 'Todas')] + MONEDA_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Moneda'
+    )
 
     def clean(self):
         cleaned_data = super().clean()
         fecha_desde = cleaned_data.get('fecha_desde')
         fecha_hasta = cleaned_data.get('fecha_hasta')
+
         if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
             self.add_error('fecha_hasta', 'La fecha "Hasta" no puede ser anterior a la fecha "Desde".')
         return cleaned_data
-
 
 
 #Forms for analisis dashboard:

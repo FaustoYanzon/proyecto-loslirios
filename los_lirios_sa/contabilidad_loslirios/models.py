@@ -69,7 +69,9 @@ class registro_trabajo(models.Model):
 #Modelo para Movimientos Financieros 
 # Opciones para Movimimientos Financierons Egresos
 ORIGEN_CHOICES = [('Oficial', 'Oficial'), ('No Oficial', 'No Oficial')]
+
 FINCA_CHOICES = [('Los Mimbres', 'Los Mimbres'), ('Media Agua', 'Media Agua'), ('Caucete', 'Caucete')]
+
 TIPO_MOVIMIENTO_CHOICES = [('Sueldos Personal', 'Sueldos Personal'),
     ('Produccion', 'Producción'),
     ('Inversion', 'Inversión'),
@@ -77,11 +79,14 @@ TIPO_MOVIMIENTO_CHOICES = [('Sueldos Personal', 'Sueldos Personal'),
     ('Insumos Varios', 'Insumos Varios'),
     ('Impuestos o Servicios', 'Impuestos o Servicios'),
     ('Energia', 'Energía'),]
+
 MONEDA_CHOICES = [('ARS', 'Pesos'), ('USD', 'USD')]
+
 FORMA_PAGO_CHOICES = [('Efectivo', 'Efectivo'),
     ('Transferencia', 'Transferencia'),
     ('Credito', 'Crédito'),
     ('Cheque', 'Cheque'),]
+
 #Modelo Movimiento Financiero Egresos
 class MovimientoFinanciero(models.Model):
     id_movimiento = models.AutoField(primary_key=True)
@@ -108,23 +113,100 @@ class MovimientoFinanciero(models.Model):
             ("can_export_movimientos", "Can export financial movements data"),
         ]
 #Modelo Movimiento Financiero Ingresos
+DESTINO_INGRESOS_CHOICES = [
+    ('Alfalfa', 'Alfalfa'),
+    ('Alquiler', 'Alquiler'),
+    ('Bodega', 'Bodega'),
+    ('Cebolla', 'Cebolla'),
+    ('Pasa', 'Pasa'),
+    ('Sandia', 'Sandía'),
+    ('Uva de mesa', 'Uva de mesa'),
+]
+
+FORMA_PAGO_INGRESOS_CHOICES = [
+    ('Cheque', 'Cheque'),
+    ('Efectivo', 'Efectivo'),
+    ('Transferencia', 'Transferencia'),
+    ('Echeque', 'Echeque'),
+]
+
+FORMA_CHOICES = [
+    ('Caja', 'Caja'),
+    ('Bsj', 'Bsj'),
+    ('MP camilo', 'MP camilo'),
+    ('GM', 'GM'),
+    ('Naranja Nico', 'Naranja Nico'),
+    ('Galicia Nico', 'Galicia Nico'),
+]
+
+class DestinoIngreso(models.Model):
+    """Modelo para gestionar destinos personalizados de ingresos"""
+    nombre = models.CharField(max_length=100, unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.nombre
+    
+    class Meta:
+        verbose_name = "Destino de Ingreso"
+        verbose_name_plural = "Destinos de Ingresos"
+        ordering = ['nombre']
+
+class CompradorIngreso(models.Model):
+    """Modelo para gestionar compradores personalizados de ingresos"""
+    nombre = models.CharField(max_length=100, unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.nombre
+    
+    class Meta:
+        verbose_name = "Comprador de Ingreso"
+        verbose_name_plural = "Compradores de Ingresos"
+        ordering = ['nombre']
+
 class IngresoFinanciero(models.Model):
     id_ingreso = models.AutoField(primary_key=True)
     fecha = models.DateField()
-    origen = models.CharField(max_length=20, choices=ORIGEN_CHOICES)   
-    finca = models.CharField(max_length=20, choices=FINCA_CHOICES)
-    detalle = models.TextField(blank=True, null=True) 
+    origen = models.CharField(max_length=20, choices=ORIGEN_CHOICES)
+    destino = models.CharField(max_length=100, verbose_name="Destino")
+    comprador = models.CharField(max_length=100, verbose_name="Comprador")
+    forma_pago = models.CharField(max_length=20, choices=FORMA_PAGO_INGRESOS_CHOICES)
+    forma = models.CharField(max_length=50, choices=FORMA_CHOICES)
+    
+    # Campos que se desbloquean solo si forma_pago es Cheque o Echeque
+    banco = models.CharField(max_length=100, blank=True, null=True)
+    numero_cheque = models.CharField(max_length=50, blank=True, null=True, verbose_name="N° de Cheque")
+    fecha_pago = models.DateField(blank=True, null=True, verbose_name="Fecha de Pago")
+    
     monto = models.DecimalField(max_digits=15, decimal_places=2)
     moneda = models.CharField(max_length=3, choices=MONEDA_CHOICES)
-    forma_pago = models.CharField(max_length=20, choices=FORMA_PAGO_CHOICES)
+
+    def clean(self):
+        """Validación personalizada para campos condicionales"""
+        from django.core.exceptions import ValidationError
+        
+        # Si forma_pago es Cheque o Echeque, banco, numero_cheque y fecha_pago son obligatorios
+        if self.forma_pago in ['Cheque', 'Echeque']:
+            if not self.banco:
+                raise ValidationError({'banco': 'Este campo es obligatorio cuando la forma de pago es Cheque o Echeque.'})
+            if not self.numero_cheque:
+                raise ValidationError({'numero_cheque': 'Este campo es obligatorio cuando la forma de pago es Cheque o Echeque.'})
+            if not self.fecha_pago:
+                raise ValidationError({'fecha_pago': 'Este campo es obligatorio cuando la forma de pago es Cheque o Echeque.'})
+        else:
+            # Si no es Cheque o Echeque, limpiar estos campos
+            self.banco = None
+            self.numero_cheque = None
+            self.fecha_pago = None
 
     def __str__(self):
-        return f"{self.fecha} | {self.finca} - {self.moneda} {self.monto}"
+        return f"{self.fecha} | {self.destino} - {self.comprador} - {self.moneda} {self.monto}"
 
     class Meta:
         verbose_name = "Ingreso Financiero"
         verbose_name_plural = "Ingresos Financieros"
-        ordering = ['-fecha'] 
+        ordering = ['-fecha']
         permissions = [
             ("can_view_ingresos", "Can view all financial incomes"),
             ("can_add_ingresos", "Can add new financial incomes"),
