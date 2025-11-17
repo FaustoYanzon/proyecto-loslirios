@@ -11,46 +11,128 @@
         <a href="{% url 'analisis_movimientos' %}" class="btn bg-gray-800 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium">Movimientos</a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">Gasto Total</h4>
-            <p class="text-3xl font-bold text-gray-800">${{ kpis.gasto_total|floatformat:2|intcomma }}</p>
+    <!-- KPIs CON COMPARACIÓN -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">Gasto Total</h4>
+                    <p class="text-2xl font-bold text-blue-600">${{ kpis.gasto_total|floatformat:2|intcomma }}</p>
+                    {% if kpis.variacion_mes_anterior %}
+                    <p class="text-xs {% if kpis.variacion_mes_anterior > 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                        {% if kpis.variacion_mes_anterior > 0 %}↗{% else %}↘{% endif %} {{ kpis.variacion_mes_anterior|floatformat:1 }}% vs mes anterior
+                    </p>
+                    {% endif %}
+                </div>
+                <div id="sparkline-gasto" class="w-20 h-12"></div>
+            </div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">Gasto Oficial</h4>
-            <p class="text-3xl font-bold text-green-600">${{ kpis.gasto_oficial|floatformat:2|intcomma }}</p>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">Gasto Oficial</h4>
+                    <p class="text-2xl font-bold text-green-600">${{ kpis.gasto_oficial|floatformat:2|intcomma }}</p>
+                    <p class="text-xs text-gray-500">{{ kpis.porcentaje_oficial|floatformat:1 }}% del total</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">Gasto No Oficial</h4>
-            <p class="text-3xl font-bold text-red-600">${{ kpis.gasto_no_oficial|floatformat:2|intcomma }}</p>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">Gasto No Oficial</h4>
+                    <p class="text-2xl font-bold text-red-600">${{ kpis.gasto_no_oficial|floatformat:2|intcomma }}</p>
+                    <p class="text-xs text-gray-500">{{ kpis.porcentaje_no_oficial|floatformat:1 }}% del total</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">IVA Estimado</h4>
+                    <p class="text-2xl font-bold text-purple-600">${{ kpis.iva|floatformat:2|intcomma }}</p>
+                    <p class="text-xs text-gray-500">21% del oficial</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">% Gasto en Energia</h4>
-            <p class="text-3xl font-bold text-gray-600">{{ kpis.porcentaje_energia|floatformat:1 }}%</p>
+    <!-- WIDGETS DE ALERTAS (MOVIDO ARRIBA) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <!-- Alertas de Aumentos Significativos -->
+        <div class="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+            <div class="flex items-center mb-3">
+                <i class="fas fa-exclamation-triangle text-orange-600 text-xl mr-2"></i>
+                <h4 class="font-semibold text-orange-800">Aumentos Significativos</h4>
+            </div>
+            <div class="space-y-2">
+                {% for alerta in alertas.aumentos_significativos %}
+                <div class="bg-white p-2 rounded text-sm">
+                    <p class="font-medium text-gray-900">{{ alerta.tipo }}</p>
+                    <p class="text-orange-600">+{{ alerta.aumento|floatformat:1 }}% vs mes anterior</p>
+                </div>
+                {% empty %}
+                <p class="text-orange-700 text-sm">No hay aumentos significativos detectados</p>
+                {% endfor %}
+            </div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">% Gasto en Sueldos Personal</h4>
-            <p class="text-3xl font-bold text-gray-600">{{ kpis.porcentaje_sueldos_personal|floatformat:1 }}%</p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">% Gastos en Inversion</h4>
-            <p class="text-3xl font-bold text-gray-600">{{ kpis.porcentaje_inversion|floatformat:1 }}%</p>
-        </div>
-    </div>  
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 grid grid-rows-2 gap-6">
+        <!-- Análisis de Estacionalidad -->
+        <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+            <div class="flex items-center mb-3">
+                <i class="fas fa-chart-line text-blue-600 text-xl mr-2"></i>
+                <h4 class="font-semibold text-blue-800">Estacionalidad</h4>
+            </div>
+            <div class="space-y-2">
+                <div class="bg-white p-2 rounded text-sm">
+                    <p class="font-medium text-gray-900">Mes Pico Histórico</p>
+                    <p class="text-blue-600">{{ estacionalidad.mes_pico|default:"Enero" }} - ${{ estacionalidad.monto_pico|default:"0"|floatformat:0|intcomma }}</p>
+                </div>
+                <div class="bg-white p-2 rounded text-sm">
+                    <p class="font-medium text-gray-900">Mes Bajo Histórico</p>
+                    <p class="text-blue-600">{{ estacionalidad.mes_bajo|default:"Diciembre" }} - ${{ estacionalidad.monto_bajo|default:"0"|floatformat:0|intcomma }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs PORCENTUALES HORIZONTALES (MOVIDO DEBAJO DE ALERTAS) -->
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <h3 class="font-semibold text-lg mb-4">Distribución por Categoría</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 class="text-sm font-semibold text-blue-600">% Energía</h4>
+                <p class="text-3xl font-bold text-blue-800">{{ kpis.porcentaje_energia|floatformat:1 }}%</p>
+            </div>
+            
+            <div class="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                <h4 class="text-sm font-semibold text-green-600">% Sueldos</h4>
+                <p class="text-3xl font-bold text-green-800">{{ kpis.porcentaje_sueldos_personal|floatformat:1 }}%</p>
+            </div>
+
+            <div class="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <h4 class="text-sm font-semibold text-purple-600">% Inversión</h4>
+                <p class="text-3xl font-bold text-purple-800">{{ kpis.porcentaje_inversion|floatformat:1 }}%</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <!-- COLUMNA IZQUIERDA - GRÁFICOS (3/4) -->
+        <div class="xl:col-span-3 space-y-6">
+            
+            <!-- Evolución temporal -->
             <div class="bg-white p-6 rounded-lg shadow">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-semibold text-lg">Evolución de Gastos Totales</h3>
                     <div>
-                        <label for="agrupacion" class="text-sm font-medium">Ver por:</label>
+                        <label for="agrupacion" class="text-sm font-medium">Agrupar por:</label>
                         <select name="agrupacion" id="agrupacion-select" class="form-control inline w-auto ml-2">
                             <option value="dia">Día</option>
-                            <option value="mes">Mes</option>
+                            <option value="mes" selected>Mes</option>
                             <option value="trimestre">Trimestre</option>
                             <option value="anio">Año</option>
                         </select>
@@ -58,60 +140,59 @@
                 </div>
                 <canvas id="lineChart"></canvas>
             </div>
+
+            <!-- NUEVO LAYOUT: Top 5 Categorías - ANCHO COMPLETO -->
             <div class="bg-white p-6 rounded-lg shadow">
                 <h3 class="font-semibold text-lg mb-4">Top 5 Sub-categorías de Gasto</h3>
                 <canvas id="top5BarChart"></canvas>
             </div>
+
+            <!-- NUEVO LAYOUT: Gastos por Tipo - ANCHO COMPLETO -->
             <div class="bg-white p-6 rounded-lg shadow">
                 <h3 class="font-semibold text-lg mb-4">Gastos por Tipo</h3>
                 <canvas id="gastosportipoBarChart"></canvas>
             </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow gap-6">
-            <div class="bg-white p-4 rounded-lg shadow text-center">
-                <h4 class="text-sm font-semibold text-gray-500">IVA</h4>
-                <p class="text-3xl font-bold text-gray-600">${{ kpis.iva|floatformat:2|intcomma }}</p>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Distribución de Gastos por Finca</h3>
+
+        <!-- COLUMNA DERECHA - SIDEBAR (1/4) -->
+        <div class="xl:col-span-1 space-y-6">
+            <!-- Distribución por Finca -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Distribución por Finca</h3>
                 <canvas id="pieChart"></canvas>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow">
+
+            <!-- FILTROS (ESTILO IGUAL A JORNALES) -->
+            <div class="bg-white p-6 rounded-lg shadow">
                 <h3 class="font-semibold text-lg mb-4">Filtros</h3>
-                <form method="GET" class="space-y-4" id="main-filter-form">
-                        <div>
-                            <label class="block text-sm font-medium">{{ form.fecha_desde.label }}</label>
-                            {{ form.fecha_desde }}
+                <form method="GET" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium">{{ form.fecha_desde.label }}</label>
+                        {{ form.fecha_desde }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">{{ form.fecha_hasta.label }}</label>
+                        {{ form.fecha_hasta }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.origen.label }}</label>
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2">
+                            {{ form.origen }}
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium">{{ form.fecha_hasta.label }}</label>
-                            {{ form.fecha_hasta }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.finca.label }}</label>
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2">
+                            {{ form.finca }}
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ form.origen.label }}</label>
-                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
-                                {{ form.origen }}
-                            </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.tipo.label }}</label>
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2">
+                            {{ form.tipo }}
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ form.finca.label }}</label>
-                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
-                                {{ form.finca }}
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ form.tipo.label }}</label>
-                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
-                                {{ form.tipo }}
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ form.clasificacion.label }}</label>
-                            <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
-                                {{ form.clasificacion }}
-                            </div>
-                        </div>
-                    <button type="submit" class="w-full btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg mt-4">Aplicar Filtros</button>
+                    </div>
+                    <button type="submit" class="w-full btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">Aplicar Filtros</button>
                 </form>
             </div>
         </div>
@@ -120,45 +201,241 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- GRÁFICOS ESTÁTICOS (se cargan una vez) ---
-        // --- Grafico de Barras: Gastos por tipo ---
-        const gastosPorTipoCtx = document.getElementById('gastosportipoBarChart').getContext('2d');
-        new Chart(gastosPorTipoCtx, { type: 'bar', data: { labels: {{ bar_chart_labels|safe }}, datasets: [{ label: 'Gasto Total', data: {{ bar_chart_data|safe }}, backgroundColor: 'rgba(43, 40, 217, 0.67)' }] }, options: { responsive: true, indexAxis: 'y' } });
+        // DATOS CORREGIDOS
+        console.log('Verificando datos:', {
+            top5_labels: {{ top5_bar_chart_labels|default:"[]"|safe }},
+            top5_data: {{ top5_bar_chart_data|default:"[]"|safe }},
+            bar_labels: {{ bar_chart_labels|default:"[]"|safe }},
+            bar_data: {{ bar_chart_data|default:"[]"|safe }},
+            pie_labels: {{ pie_chart_labels|default:"[]"|safe }},
+            pie_data: {{ pie_chart_data|default:"[]"|safe }}
+        });
 
-        // Gráfico de Barras: Top 5 Clasificaciones
-        const top5BarCtx = document.getElementById('top5BarChart').getContext('2d');
-        new Chart(top5BarCtx, { type: 'bar', data: { labels: {{ top5_bar_chart_labels|safe }}, datasets: [{ label: 'Gasto Total', data: {{ top5_bar_chart_data|safe }}, backgroundColor: 'rgba(48, 87, 242, 0.64)' }] }, options: { responsive: true } });
+        // --- CONFIGURACIÓN DE COLORES ---
+        const colors = {
+            primary: 'rgba(59, 130, 246, 0.8)',
+            secondary: 'rgba(16, 185, 129, 0.8)',
+            accent: 'rgba(245, 158, 11, 0.8)',
+            danger: 'rgba(239, 68, 68, 0.8)',
+            purple: 'rgba(139, 92, 246, 0.8)'
+        };
 
-        // Gráfico de Torta: Distribución por Finca
-        const pieCtx = document.getElementById('pieChart').getContext('2d');
-        new Chart(pieCtx, { type: 'pie', data: { labels: {{ pie_chart_labels|safe }}, datasets: [{ data: {{ pie_chart_data|safe }}, backgroundColor: ['rgba(57, 116, 210, 0.7)', 'rgba(218, 130, 29, 0.7)'] }] }, options: { responsive: true } });
-
-        // --- LÓGICA DEL GRÁFICO DE LÍNEAS DINÁMICO (AJAX) ---
-        const lineCtx = document.getElementById('lineChart').getContext('2d');
-        const lineChart = new Chart(lineCtx, { type: 'line', data: { labels: [], datasets: [{ label: 'Gasto Total', fill: true }] }, options: { responsive: true } });
-        const agrupacionSelect = document.getElementById('agrupacion-select');
-        const mainFilterForm = document.getElementById('main-filter-form');
-
-        function updateLineChart() {
-            const agrupacion = agrupacionSelect.value;
-            // Obtenemos todos los filtros del formulario principal
-            const formData = new URLSearchParams(new FormData(mainFilterForm)).toString();
-            const apiUrl = `{% url 'line_chart_data_api' %}?agrupacion=${agrupacion}&${formData}`;
-
-            fetch(apiUrl)
-                .then(response => response.json())
-                .then(data => {
-                    lineChart.data.labels = data.labels;
-                    lineChart.data.datasets[0].data = data.data;
-                    lineChart.update();
+        // 1. GRÁFICO DE TORTA - CORREGIDO
+        const pieCtx = document.getElementById('pieChart');
+        if (pieCtx) {
+            const pieLabels = {{ pie_chart_labels|default:"[]"|safe }};
+            const pieData = {{ pie_chart_data|default:"[]"|safe }};
+            
+            if (pieLabels.length > 0 && pieData.length > 0) {
+                new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: pieLabels,
+                        datasets: [{
+                            data: pieData,
+                            backgroundColor: [
+                                colors.primary,
+                                colors.secondary, 
+                                colors.accent,
+                                colors.danger,
+                                colors.purple
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        aspectRatio: 1,
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    }
                 });
+            } else {
+                pieCtx.parentElement.innerHTML = '<p class="text-center text-gray-500">No hay datos disponibles</p>';
+            }
         }
 
-        // Actualizar el gráfico de líneas cuando cambia la selección de agrupación
-        agrupacionSelect.addEventListener('change', updateLineChart);
+        // 2. TOP 5 BAR CHART - CORREGIDO (ALTURA FIJA)
+        const top5Ctx = document.getElementById('top5BarChart');
+        if (top5Ctx) {
+            const top5Labels = {{ top5_bar_chart_labels|default:"[]"|safe }};
+            const top5Data = {{ top5_bar_chart_data|default:"[]"|safe }};
+            
+            if (top5Labels.length > 0 && top5Data.length > 0) {
+                // Establecer altura ANTES de crear el gráfico
+                top5Ctx.parentElement.style.height = '400px';
+                top5Ctx.style.height = '350px';
+                
+                new Chart(top5Ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: top5Labels,
+                        datasets: [{
+                            label: 'Monto',
+                            data: top5Data,
+                            backgroundColor: colors.secondary
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { 
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                top5Ctx.parentElement.innerHTML = '<p class="text-center text-gray-500 py-8">No hay datos disponibles</p>';
+            }
+        }
+
+        // 3. GASTOS POR TIPO CHART - CORREGIDO (ALTURA FIJA)
+        const tipoCtx = document.getElementById('gastosportipoBarChart');
+        if (tipoCtx) {
+            const barLabels = {{ bar_chart_labels|default:"[]"|safe }};
+            const barData = {{ bar_chart_data|default:"[]"|safe }};
+            
+            if (barLabels.length > 0 && barData.length > 0) {
+                // Establecer altura ANTES de crear el gráfico
+                tipoCtx.parentElement.style.height = '400px';
+                tipoCtx.style.height = '350px';
+                
+                new Chart(tipoCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: barLabels,
+                        datasets: [{
+                            label: 'Monto',
+                            data: barData,
+                            backgroundColor: colors.primary
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: { 
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                tipoCtx.parentElement.innerHTML = '<p class="text-center text-gray-500 py-8">No hay datos disponibles</p>';
+            }
+        }
+
+        // 4. GRÁFICO DE LÍNEAS DINÁMICO (SIN CAMBIOS)
+        const lineCtx = document.getElementById('lineChart');
+        let lineChart;
         
-        // Cargar el gráfico de líneas por primera vez al cargar la página
-        updateLineChart();
+        if (lineCtx) {
+            lineChart = new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Gasto Total',
+                        data: [],
+                        borderColor: colors.primary.replace('0.8', '1'),
+                        backgroundColor: colors.primary.replace('0.8', '0.1'),
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // FUNCIÓN PARA ACTUALIZAR GRÁFICO DE LÍNEAS
+            function updateLineChart() {
+                const agrupacion = document.getElementById('agrupacion-select').value;
+                const form = document.querySelector('form[method="GET"]');
+                const formData = new URLSearchParams(new FormData(form)).toString();
+                const apiUrl = `{% url 'line_chart_data_api' %}?agrupacion=${agrupacion}&${formData}`;
+
+                fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        lineChart.data.labels = data.labels || [];
+                        lineChart.data.datasets[0].data = data.data || [];
+                        lineChart.update();
+                    })
+                    .catch(error => {
+                        console.error('Error updating line chart:', error);
+                    });
+            }
+
+            // Event listener para cambio de agrupación
+            const agrupacionSelect = document.getElementById('agrupacion-select');
+            if (agrupacionSelect) {
+                agrupacionSelect.addEventListener('change', updateLineChart);
+            }
+            
+            // Cargar datos iniciales
+            updateLineChart();
+        }
     });
     </script>
+    <style>
+        .chart-container-fixed {
+            height: 400px !important;
+            position: relative;
+        }
+        
+        .chart-container-fixed canvas {
+            height: 350px !important;
+            max-height: 350px !important;
+        }
+        
+        .chart-container-line {
+            height: 300px !important;
+            position: relative;
+        }
+    </style>
 {% endblock contenido %}

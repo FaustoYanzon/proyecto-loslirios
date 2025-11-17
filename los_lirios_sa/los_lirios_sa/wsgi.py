@@ -11,6 +11,10 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'los_lirios_sa.settings')
+# Configurar settings según entorno
+if os.environ.get('DJANGO_ENV') == 'production':
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'contabilidad_loslirios.settings.production')
+else:
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'contabilidad_loslirios.settings.development')
 
 application = get_wsgi_application()

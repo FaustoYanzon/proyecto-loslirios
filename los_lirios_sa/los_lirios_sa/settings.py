@@ -132,6 +132,10 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # URLs para el sistema de autenticación de Django
-LOGIN_URL = 'login' # Nombre de la URL para la página de inicio de sesión
-LOGIN_REDIRECT_URL = 'main' # Nombre de la URL a la que se redirige después de un login exitoso
-LOGOUT_REDIRECT_URL = 'login' # Nombre de la URL a la que se redirige después de un logout
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
+
+# Configuraciones de sesión
+SESSION_COOKIE_AGE = 8 * 60 * 60  # 8 horas
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

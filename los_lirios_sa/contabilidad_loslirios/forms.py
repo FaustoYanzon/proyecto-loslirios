@@ -1,5 +1,6 @@
 from django import forms
 from .models import *
+from django.contrib.auth.forms import AuthenticationForm
 #Create forms here
 
 #Administration
@@ -567,7 +568,7 @@ class FiltrosRiegoForm(forms.Form):
 
 #Model for Harvest Records
 # Form for Cosecha upload
-class CosechaForm(forms.ModelForm):
+class RegistroCosechaForm(forms.ModelForm):
     class Meta:
         model = RegistroCosecha
         fields = [
@@ -694,4 +695,21 @@ class FiltrosCosechaForm(forms.Form):
         if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
             self.add_error('fecha_fin', 'La fecha "Fin" no puede ser anterior a la fecha "Inicio".')
         return cleaned_data
+
+#Custom Login Form
+class CustomLoginForm(AuthenticationForm):
+    username = forms.CharField(
+        max_length=254,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full',
+            'placeholder': 'Usuario',
+            'autofocus': True
+        })
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full',
+            'placeholder': 'Contraseña'
+        })
+    )
 

@@ -1,6 +1,9 @@
 {% extends "contabilidad_loslirios/main.html" %}
 {% load static %}
-{% block titulo %}Cargar Cosecha - Los Lirios SA{% endblock titulo %}
+
+{% block titulo %}
+    {% if modo == 'editar' %}Editar Cosecha{% else %}Cargar Cosecha{% endif %} - Los Lirios SA
+{% endblock titulo %}
 
 {% block contenido %}
     {# Mensajes #}
@@ -16,8 +19,26 @@
         <a href="{% url 'produccion' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
             <i class="fas fa-arrow-left mr-2"></i> Volver a Producción
         </a>
-        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Cargar Registro de Cosecha</h1>
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">
+            {% if modo == 'editar' %}
+                Editar Registro de Cosecha
+            {% else %}
+                Cargar Registro de Cosecha
+            {% endif %}
+        </h1>
     </div>
+
+    <!-- Indicador de modo edición -->
+    {% if modo == 'editar' %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+            <span class="text-blue-800 font-medium">
+                Editando registro del {{ cosecha.fecha|date:"d/m/Y" }} - {{ cosecha.variedad }} ({{ cosecha.finca }})
+            </span>
+        </div>
+    </div>
+    {% endif %}
 
     <form method="post" id="form-cosecha" class="bg-white p-8 rounded-lg shadow-md">
         {% csrf_token %}
@@ -28,113 +49,200 @@
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
                 <div class="space-y-2">
                     <label for="{{ form.fecha.id_for_label }}" class="block text-gray-700 text-sm font-bold">Fecha:</label>
-                    {{ form.fecha }}
-                    {% if form.fecha.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.fecha.errors|first }}</p>{% endif %}
+                    <input type="date" 
+                           name="{{ form.fecha.name }}" 
+                           id="{{ form.fecha.id_for_label }}"
+                           value="{{ form.fecha.value|date:'Y-m-d'|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           required>
+                    {% if form.fecha.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.fecha.errors|first }}</p>
+                    {% endif %}
                 </div>
 
                 <div class="space-y-2">
                     <label for="{{ form.origen.id_for_label }}" class="block text-gray-700 text-sm font-bold">Origen:</label>
-                    {{ form.origen }}
-                    {% if form.origen.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.origen.errors|first }}</p>{% endif %}
+                    <select name="{{ form.origen.name }}" 
+                            id="{{ form.origen.id_for_label }}"
+                            class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                            required>
+                        <option value="">Seleccione origen</option>
+                        {% for value, label in form.origen.field.choices %}
+                            <option value="{{ value }}" {% if form.origen.value == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.origen.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.origen.errors|first }}</p>
+                    {% endif %}
                 </div>
 
                 <div class="space-y-2">
                     <label for="{{ form.finca.id_for_label }}" class="block text-gray-700 text-sm font-bold">Finca:</label>
-                    {{ form.finca }}
+                    <input type="text" 
+                           name="{{ form.finca.name }}" 
+                           id="{{ form.finca.id_for_label }}"
+                           value="{{ form.finca.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           list="finca-list"
+                           required
+                           placeholder="Seleccione o escriba una finca">
                     <datalist id="finca-list">
                         {% for finca in fincas %}
                             <option value="{{ finca }}">
                         {% endfor %}
                     </datalist>
-                    {% if form.finca.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.finca.errors|first }}</p>{% endif %}
+                    {% if form.finca.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.finca.errors|first }}</p>
+                    {% endif %}
                 </div>
 
                 <div class="space-y-2">
                     <label for="{{ form.destino.id_for_label }}" class="block text-gray-700 text-sm font-bold">Destino:</label>
-                    {{ form.destino }}
-                    {% if form.destino.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.destino.errors|first }}</p>{% endif %}
+                    <select name="{{ form.destino.name }}" 
+                            id="{{ form.destino.id_for_label }}"
+                            class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                            required>
+                        <option value="">Seleccione destino</option>
+                        {% for value, label in form.destino.field.choices %}
+                            <option value="{{ value }}" {% if form.destino.value == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.destino.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.destino.errors|first }}</p>
+                    {% endif %}
                 </div>
 
-                <div class="space-y-2 md:col-span-2 xl:col-span-1">
+                <div class="space-y-2">
                     <label for="{{ form.comprador.id_for_label }}" class="block text-gray-700 text-sm font-bold">Comprador:</label>
-                    {{ form.comprador }}
+                    <input type="text" 
+                           name="{{ form.comprador.name }}" 
+                           id="{{ form.comprador.id_for_label }}"
+                           value="{{ form.comprador.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           list="comprador-list"
+                           required
+                           placeholder="Seleccione o escriba un comprador">
                     <datalist id="comprador-list">
                         {% for comprador in compradores %}
                             <option value="{{ comprador }}">
                         {% endfor %}
                     </datalist>
-                    {% if form.comprador.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.comprador.errors|first }}</p>{% endif %}
+                    {% if form.comprador.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.comprador.errors|first }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2">
+                    <label for="{{ form.cultivo.id_for_label }}" class="block text-gray-700 text-sm font-bold">Cultivo:</label>
+                    <input type="text" 
+                           name="{{ form.cultivo.name }}" 
+                           id="{{ form.cultivo.id_for_label }}"
+                           value="{{ form.cultivo.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           list="cultivo-list"
+                           required
+                           placeholder="Ej: Uva, Alfalfa">
+                    <datalist id="cultivo-list">
+                        {% for cultivo in cultivos %}
+                            <option value="{{ cultivo }}">
+                        {% endfor %}
+                    </datalist>
+                    {% if form.cultivo.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.cultivo.errors|first }}</p>
+                    {% endif %}
                 </div>
             </div>
         </fieldset>
 
-        <!-- Cambio aquí: Grid con proporciones específicas -->
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-            <!-- Documentación: 2 columnas (más estrecho) -->
-            <fieldset class="border border-gray-300 p-6 rounded-md lg:col-span-2">
-                <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Documentación</legend>
-                <div class="space-y-6 mt-4">
-                    <div class="space-y-2">
-                        <label for="{{ form.remito.id_for_label }}" class="block text-gray-700 text-sm font-bold">Número de Remito:</label>
-                        {{ form.remito }}
-                        {% if form.remito.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.remito.errors|first }}</p>{% endif %}
-                    </div>
-
-                    <div class="space-y-2">
-                        <label for="{{ form.ciu.id_for_label }}" class="block text-gray-700 text-sm font-bold">CIU:</label>
-                        {{ form.ciu }}
-                        <small class="text-gray-600 text-xs block mt-1">Solo para uva de bodega</small>
-                        {% if form.ciu.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.ciu.errors|first }}</p>{% endif %}
-                    </div>
+        <!-- Detalles del Producto -->
+        <fieldset class="border border-gray-300 p-6 rounded-md mb-6">
+            <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Detalles del Producto</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
+                <div class="space-y-2">
+                    <label for="{{ form.parral_potrero.id_for_label }}" class="block text-gray-700 text-sm font-bold">Parral/Potrero:</label>
+                    <input type="text" 
+                           name="{{ form.parral_potrero.name }}" 
+                           id="{{ form.parral_potrero.id_for_label }}"
+                           value="{{ form.parral_potrero.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           required
+                           placeholder="Ej: Parral 16, Potrero Norte">
+                    {% if form.parral_potrero.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.parral_potrero.errors|first }}</p>
+                    {% endif %}
                 </div>
-            </fieldset>
 
-            <!-- Detalles del Producto: 3 columnas (más ancho) -->
-            <fieldset class="border border-gray-300 p-6 rounded-md lg:col-span-3">
-                <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Detalles del Producto</legend>
-                <div class="space-y-6 mt-4">
-                    <!-- Primera fila -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <label for="{{ form.cultivo.id_for_label }}" class="block text-gray-700 text-sm font-bold">Cultivo:</label>
-                            {{ form.cultivo }}
-                            <datalist id="cultivo-list">
-                                {% for cultivo in cultivos %}
-                                    <option value="{{ cultivo }}">
-                                {% endfor %}
-                            </datalist>
-                            {% if form.cultivo.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.cultivo.errors|first }}</p>{% endif %}
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="{{ form.parral_potrero.id_for_label }}" class="block text-gray-700 text-sm font-bold">Parral/Potrero:</label>
-                            {{ form.parral_potrero }}
-                            {% if form.parral_potrero.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.parral_potrero.errors|first }}</p>{% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Segunda fila -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <label for="{{ form.variedad.id_for_label }}" class="block text-gray-700 text-sm font-bold">Variedad:</label>
-                            {{ form.variedad }}
-                            <datalist id="variedad-list">
-                                {% for variedad in variedades %}
-                                    <option value="{{ variedad }}">
-                                {% endfor %}
-                            </datalist>
-                            {% if form.variedad.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.variedad.errors|first }}</p>{% endif %}
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="{{ form.medida.id_for_label }}" class="block text-gray-700 text-sm font-bold">Medida:</label>
-                            {{ form.medida }}
-                            {% if form.medida.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.medida.errors|first }}</p>{% endif %}
-                        </div>
-                    </div>
+                <div class="space-y-2">
+                    <label for="{{ form.variedad.id_for_label }}" class="block text-gray-700 text-sm font-bold">Variedad:</label>
+                    <input type="text" 
+                           name="{{ form.variedad.name }}" 
+                           id="{{ form.variedad.id_for_label }}"
+                           value="{{ form.variedad.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           list="variedad-list"
+                           required
+                           placeholder="Ej: Sultanina, Red Globe">
+                    <datalist id="variedad-list">
+                        {% for variedad in variedades %}
+                            <option value="{{ variedad }}">
+                        {% endfor %}
+                    </datalist>
+                    {% if form.variedad.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.variedad.errors|first }}</p>
+                    {% endif %}
                 </div>
-            </fieldset>
-        </div>
+
+                <div class="space-y-2">
+                    <label for="{{ form.medida.id_for_label }}" class="block text-gray-700 text-sm font-bold">Medida:</label>
+                    <select name="{{ form.medida.name }}" 
+                            id="{{ form.medida.id_for_label }}"
+                            class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                            required>
+                        <option value="">Seleccione medida</option>
+                        {% for value, label in form.medida.field.choices %}
+                            <option value="{{ value }}" {% if form.medida.value == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.medida.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.medida.errors|first }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2">
+                    <label for="{{ form.remito.id_for_label }}" class="block text-gray-700 text-sm font-bold">Número de Remito:</label>
+                    <input type="text" 
+                           name="{{ form.remito.name }}" 
+                           id="{{ form.remito.id_for_label }}"
+                           value="{{ form.remito.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           required
+                           placeholder="Ej: REM-2024-001">
+                    {% if form.remito.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.remito.errors|first }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2">
+                    <label for="{{ form.ciu.id_for_label }}" class="block text-gray-700 text-sm font-bold">CIU (Opcional):</label>
+                    <input type="number" 
+                           name="{{ form.ciu.name }}" 
+                           id="{{ form.ciu.id_for_label }}"
+                           value="{{ form.ciu.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           placeholder="Solo para uva de bodega">
+                    <small class="text-gray-500 text-xs">Solo para uva de bodega</small>
+                    {% if form.ciu.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.ciu.errors|first }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
 
         <!-- Pesos y Cantidades -->
         <fieldset class="border border-gray-300 p-6 rounded-md mb-6">
@@ -144,13 +252,31 @@
             <div id="campos-caja-bin" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                 <div class="space-y-2">
                     <label for="{{ form.cantidad.id_for_label }}" class="block text-gray-700 text-sm font-bold">Cantidad:</label>
-                    {{ form.cantidad }}
-                    {% if form.cantidad.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.cantidad.errors|first }}</p>{% endif %}
+                    <input type="number" 
+                           name="{{ form.cantidad.name }}" 
+                           id="{{ form.cantidad.id_for_label }}"
+                           value="{{ form.cantidad.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           min="1"
+                           placeholder="Número de cajas/bins">
+                    {% if form.cantidad.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.cantidad.errors|first }}</p>
+                    {% endif %}
                 </div>
+
                 <div class="space-y-2">
                     <label for="{{ form.peso_unitario.id_for_label }}" class="block text-gray-700 text-sm font-bold">Peso Unitario (Kg):</label>
-                    {{ form.peso_unitario }}
-                    {% if form.peso_unitario.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.peso_unitario.errors|first }}</p>{% endif %}
+                    <input type="number" 
+                           name="{{ form.peso_unitario.name }}" 
+                           id="{{ form.peso_unitario.id_for_label }}"
+                           value="{{ form.peso_unitario.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           step="0.01"
+                           min="0"
+                           placeholder="Peso por caja/bin">
+                    {% if form.peso_unitario.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.peso_unitario.errors|first }}</p>
+                    {% endif %}
                 </div>
             </div>
 
@@ -158,111 +284,113 @@
             <div id="campos-chasis" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4" style="display: none;">
                 <div class="space-y-2">
                     <label for="{{ form.bruto.id_for_label }}" class="block text-gray-700 text-sm font-bold">Peso Bruto (Kg):</label>
-                    {{ form.bruto }}
-                    {% if form.bruto.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.bruto.errors|first }}</p>{% endif %}
+                    <input type="number" 
+                           name="{{ form.bruto.name }}" 
+                           id="{{ form.bruto.id_for_label }}"
+                           value="{{ form.bruto.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           step="0.01"
+                           min="0"
+                           placeholder="Peso total del chasis">
+                    {% if form.bruto.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.bruto.errors|first }}</p>
+                    {% endif %}
                 </div>
+
                 <div class="space-y-2">
                     <label for="{{ form.tara.id_for_label }}" class="block text-gray-700 text-sm font-bold">Tara (Kg):</label>
-                    {{ form.tara }}
-                    {% if form.tara.errors %}<p class="text-red-500 text-xs italic mt-1">{{ form.tara.errors|first }}</p>{% endif %}
+                    <input type="number" 
+                           name="{{ form.tara.name }}" 
+                           id="{{ form.tara.id_for_label }}"
+                           value="{{ form.tara.value|default:'' }}"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           step="0.01"
+                           min="0"
+                           placeholder="Peso del envase">
+                    {% if form.tara.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.tara.errors|first }}</p>
+                    {% endif %}
                 </div>
             </div>
 
             <!-- Indicador de Kg Totales -->
             <div class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500 mt-6">
                 <div class="flex items-center">
-                    <i class="fas fa-weight text-blue-600 mr-2"></i>
                     <span class="text-blue-800 font-semibold">Kg Totales: </span>
                     <span id="kg-totales-display" class="text-blue-900 font-bold ml-2">0 kg</span>
                 </div>
             </div>
         </fieldset>
 
-        <!-- Botón de Guardar -->
+        <!-- Botones de Acción -->
         <div class="flex justify-center">
-            <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-medium flex items-center text-lg transition-colors duration-200">
-                <i class="fas fa-save mr-2"></i> Guardar Registro
+            <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-medium text-lg transition-colors duration-200">
+                {% if modo == 'editar' %}
+                    <i class="fas fa-save mr-2"></i>Actualizar Registro
+                {% else %}
+                    <i class="fas fa-save mr-2"></i>Guardar Registro
+                {% endif %}
             </button>
         </div>
     </form>
 
     <script>
         // Mostrar/ocultar campos según la medida seleccionada
-        document.getElementById('id_medida').addEventListener('change', function() {
-            const medida = this.value;
+        document.addEventListener('DOMContentLoaded', function() {
+            const medidaSelect = document.getElementById('{{ form.medida.id_for_label }}');
             const camposCajaBin = document.getElementById('campos-caja-bin');
             const camposChasis = document.getElementById('campos-chasis');
             
-            if (medida === 'Chasis') {
-                camposCajaBin.style.display = 'none';
-                camposChasis.style.display = 'grid';
-            } else {
-                camposCajaBin.style.display = 'grid';
-                camposChasis.style.display = 'none';
+            function toggleCamposMedida() {
+                const medida = medidaSelect.value;
+                
+                if (medida === 'Chasis') {
+                    camposCajaBin.style.display = 'none';
+                    camposChasis.style.display = 'grid';
+                } else {
+                    camposCajaBin.style.display = 'grid';
+                    camposChasis.style.display = 'none';
+                }
+                
+                calcularKgTotales();
             }
             
-            calcularKgTotales();
-        });
-
-        // Función para calcular kg totales en tiempo real
-        function calcularKgTotales() {
-            const medida = document.getElementById('id_medida').value;
-            const kgDisplay = document.getElementById('kg-totales-display');
+            // Inicializar vista según medida seleccionada (importante para edición)
+            toggleCamposMedida();
             
-            if (medida === 'Chasis') {
-                const bruto = parseFloat(document.getElementById('id_bruto').value) || 0;
-                const tara = parseFloat(document.getElementById('id_tara').value) || 0;
-                const total = bruto - tara;
-                kgDisplay.textContent = `${total.toFixed(2)} kg`;
-            } else {
-                const pesoUnitario = parseFloat(document.getElementById('id_peso_unitario').value) || 0;
-                const cantidad = parseInt(document.getElementById('id_cantidad').value) || 0;
-                const total = pesoUnitario * cantidad;
-                kgDisplay.textContent = `${total.toFixed(2)} kg`;
-            }
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar vista según medida seleccionada
-            const medidaSelect = document.getElementById('id_medida');
-            if (medidaSelect.value === 'Chasis') {
-                document.getElementById('campos-caja-bin').style.display = 'none';
-                document.getElementById('campos-chasis').style.display = 'grid';
-            }
+            medidaSelect.addEventListener('change', toggleCamposMedida);
             
-            calcularKgTotales();
-
             // Event listeners para recálculo automático
-            ['id_peso_unitario', 'id_cantidad', 'id_bruto', 'id_tara'].forEach(id => {
+            ['{{ form.peso_unitario.id_for_label }}', '{{ form.cantidad.id_for_label }}', 
+             '{{ form.bruto.id_for_label }}', '{{ form.tara.id_for_label }}'].forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
                     element.addEventListener('input', calcularKgTotales);
                 }
             });
+            
+            // Cálculo inicial
+            calcularKgTotales();
         });
 
-        // Mostrar mensajes con Toastify
-        document.addEventListener('DOMContentLoaded', function() {
-            const messagesDiv = document.getElementById('django-messages');
-            if (messagesDiv) {
-                const messages = messagesDiv.querySelectorAll('div[data-message]');
-                messages.forEach(function(messageDiv) {
-                    const level = messageDiv.getAttribute('data-level');
-                    const message = messageDiv.getAttribute('data-message');
-                    
-                    Toastify({
-                        text: message,
-                        duration: 3000,
-                        close: true,
-                        gravity: "top",
-                        position: "right",
-                        style: {
-                            background: level === 'success' ? "#10B981" : "#EF4444",
-                        }
-                    }).showToast();
-                });
+        // Función para calcular kg totales en tiempo real
+        function calcularKgTotales() {
+            const medida = document.getElementById('{{ form.medida.id_for_label }}').value;
+            const kgDisplay = document.getElementById('kg-totales-display');
+            
+            if (medida === 'Chasis') {
+                const bruto = parseFloat(document.getElementById('{{ form.bruto.id_for_label }}').value) || 0;
+                const tara = parseFloat(document.getElementById('{{ form.tara.id_for_label }}').value) || 0;
+                const total = bruto - tara;
+                kgDisplay.textContent = `${total.toFixed(2)} kg`;
+                kgDisplay.style.color = total > 0 ? '#059669' : '#dc2626';
+            } else {
+                const pesoUnitario = parseFloat(document.getElementById('{{ form.peso_unitario.id_for_label }}').value) || 0;
+                const cantidad = parseInt(document.getElementById('{{ form.cantidad.id_for_label }}').value) || 0;
+                const total = pesoUnitario * cantidad;
+                kgDisplay.textContent = `${total.toFixed(2)} kg`;
+                kgDisplay.style.color = total > 0 ? '#059669' : '#dc2626';
             }
-        });
+        }
     </script>
 {% endblock contenido %}

@@ -59,7 +59,6 @@ class registro_trabajo(models.Model):
     class Meta:
         verbose_name = "Registro de Trabajo"
         verbose_name_plural = "Registros de Trabajo"
-        # Permisos personalizados para el modelo registro_trabajo
         permissions = [
             ("can_view_jornales", "Can view all jornal entries"),
             ("can_add_jornales", "Can add new jornal entries"),
@@ -345,3 +344,19 @@ class RegistroCosecha(models.Model):
         verbose_name_plural = "Registros de Cosecha"
         ordering = ['-fecha']
 
+# nuevo modelo para análisis
+class AnalisisPermission(models.Model):
+    """Modelo dummy para permisos de análisis"""
+    class Meta:
+        managed = False
+        permissions = [
+            ("can_view_analisis_data", "Can view analysis dashboards"),
+        ]
+
+class ProduccionPermission(models.Model):
+    """Modelo dummy para permisos de producción"""
+    class Meta:
+        managed = False
+        permissions = [
+            ("can_view_produccion_data", "Can view production data"),
+        ]

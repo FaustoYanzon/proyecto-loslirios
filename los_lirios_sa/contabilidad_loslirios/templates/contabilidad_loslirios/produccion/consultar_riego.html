@@ -68,6 +68,7 @@
             {% endif %}
         </form>
     </div>
+    
     <!-- Resumen -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
@@ -155,15 +156,24 @@
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{{ registro.responsable }}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <div class="flex justify-center space-x-2">
-                                <button onclick="verDetalle({{ registro.id }})" 
-                                        class="text-blue-600 hover:text-blue-900" title="Ver detalle">
+                                <!-- Botón Ver detalle -->
+                                <button onclick="verDetalle({{ registro.id_riego }})" 
+                                        class="text-blue-600 hover:text-blue-900 transition-colors duration-150"
+                                        data-tooltip="Ver detalle completo">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                <a href="#" class="text-green-600 hover:text-green-900" title="Editar">
+                                
+                                <!-- Botón Editar - CORREGIDO -->
+                                <a href="{% url 'editar_riego' registro.id_riego %}" 
+                                   class="text-green-600 hover:text-green-900 transition-colors duration-150"
+                                   data-tooltip="Editar registro">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <button onclick="confirmarEliminar({{ registro.id }})" 
-                                        class="text-red-600 hover:text-red-900" title="Eliminar">
+                                
+                                <!-- Botón Eliminar - CORREGIDO -->
+                                <button onclick="confirmarEliminar('{{ registro.parral }} - {{ registro.inicio|date:'d/m/Y H:i' }}', '{% url 'eliminar_riego' registro.id_riego %}')" 
+                                        class="text-red-600 hover:text-red-900 transition-colors duration-150"
+                                        data-tooltip="Eliminar registro">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -182,7 +192,7 @@
             </table>
         </div>
 
-        <!-- Paginación MEJORADA -->
+        <!-- Paginación -->
         {% if page_obj.has_other_pages %}
         <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
             <div class="flex-1 flex justify-between sm:hidden">
@@ -323,12 +333,28 @@
 
         // Funciones para acciones de tabla
         function verDetalle(id) {
-            alert('Ver detalle del registro ID: ' + id);
+            // Implementar modal de detalle
+            fetch(`/produccion/riego/detalle/${id}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('contenido-detalle').innerHTML = data.html;
+                        document.getElementById('modal-detalle').classList.remove('hidden');
+                    } else {
+                        alert('Error al cargar el detalle');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error de conexión');
+                });
         }
 
-        function confirmarEliminar(id) {
-            if (confirm('¿Está seguro de que desea eliminar este registro?')) {
-                alert('Eliminar registro ID: ' + id);
+        // FUNCIÓN CORREGIDA para eliminar
+        function confirmarEliminar(descripcion, url) {
+            if (confirm(`¿Estás seguro de que deseas eliminar el registro de riego "${descripcion}"?\n\nEsta acción no se puede deshacer.`)) {
+                // Redirigir directamente a la URL de eliminación
+                window.location.href = url;
             }
         }
 
@@ -339,6 +365,13 @@
         // Cerrar modal al hacer clic fuera
         document.getElementById('modal-detalle').addEventListener('click', function(e) {
             if (e.target === this) {
+                cerrarModal();
+            }
+        });
+
+        // Cerrar modal con tecla ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
                 cerrarModal();
             }
         });

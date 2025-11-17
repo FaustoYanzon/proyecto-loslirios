@@ -1,7 +1,9 @@
 {% extends "contabilidad_loslirios/main.html" %}
 {% load static %}
 
-{% block titulo %}Cargar Ingresos - Los Lirios SA{% endblock titulo %}
+{% block titulo %}
+    {% if modo == 'editar' %}Editar Ingreso{% else %}Cargar Ingresos{% endif %} - Los Lirios SA
+{% endblock titulo %}
 
 {% block contenido %}
     {# Mensajes de Django (Toastify-js los leerá y los mostrará) #}
@@ -17,8 +19,26 @@
         <a href="{% url 'contabilidad' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
             <i class="fas fa-arrow-left mr-2"></i> Volver a Administración
         </a>
-        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Cargar Ingresos Financieros</h1>
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">
+            {% if modo == 'editar' %}
+                Editar Registro de Ingreso Financiero
+            {% else %}
+                Cargar Ingresos Financieros
+            {% endif %}
+        </h1>
     </div>
+
+    <!-- Indicador de modo edición -->
+    {% if modo == 'editar' %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+            <span class="text-blue-800 font-medium">
+                Editando ingreso de {{ ingreso.comprador }} del {{ ingreso.fecha|date:"d/m/Y" }} - ${{ ingreso.monto|floatformat:2 }}
+            </span>
+        </div>
+    </div>
+    {% endif %}
 
     <form method="POST" class="bg-white p-8 rounded-lg shadow-md" id="ingreso-form">
         {% csrf_token %}
@@ -83,11 +103,14 @@
                             <option value="Sandia" {% if formulario.destino.value == 'Sandia' %}selected{% endif %}>Sandía</option>
                             <option value="Uva de mesa" {% if formulario.destino.value == 'Uva de mesa' %}selected{% endif %}>Uva de mesa</option>
                         </select>
+                        <!-- Solo mostrar botón en modo crear -->
+                        {% if not modo == 'editar' %}
                         <button type="button" id="btn-agregar-destino" 
                                 class="absolute right-2 top-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded" 
                                 title="Agregar nuevo destino">
                             <i class="fas fa-plus"></i>
                         </button>
+                        {% endif %}
                     </div>
                     {% if formulario.destino.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ formulario.destino.errors|first }}</p>
@@ -110,11 +133,14 @@
                             <option value="">Seleccione comprador</option>
                             <!-- Las opciones se cargan dinámicamente -->
                         </select>
+                        <!-- Solo mostrar botón en modo crear -->
+                        {% if not modo == 'editar' %}
                         <button type="button" id="btn-agregar-comprador" 
                                 class="absolute right-2 top-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded" 
                                 title="Agregar nuevo comprador">
                             <i class="fas fa-plus"></i>
                         </button>
+                        {% endif %}
                     </div>
                     {% if formulario.comprador.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ formulario.comprador.errors|first }}</p>
@@ -240,12 +266,17 @@
         <!-- Botón de Guardar -->
         <div class="flex justify-center">
             <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-medium flex items-center text-lg transition-colors duration-200">
-                <i class="fas fa-save mr-2"></i> Guardar Ingreso
+                {% if modo == 'editar' %}
+                    <i class="fas fa-save mr-2"></i> Actualizar Ingreso
+                {% else %}
+                    <i class="fas fa-save mr-2"></i> Guardar Ingreso
+                {% endif %}
             </button>
         </div>
     </form>
 
-    <!-- Modales para agregar destino/comprador -->
+    <!-- Modales para agregar destino/comprador - Solo en modo crear -->
+    {% if not modo == 'editar' %}
     <div id="modal-destino" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-screen px-4">
             <div class="bg-white rounded-lg max-w-md w-full p-6">
@@ -299,6 +330,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -330,7 +362,7 @@
                 fetch('{% url "get_destinos_ingresos" %}')
                     .then(response => response.json())
                     .then(data => {
-                        const destinoActual = destinoSelect.value;
+                        const destinoActual = '{{ formulario.destino.value|default:"" }}';
                         destinoSelect.innerHTML = '<option value="">Seleccione destino</option>';
                         
                         // Agregar destinos predefinidos
@@ -357,7 +389,7 @@
                 fetch('{% url "get_compradores_ingresos" %}')
                     .then(response => response.json())
                     .then(data => {
-                        const compradorActual = compradorSelect.value;
+                        const compradorActual = '{{ formulario.comprador.value|default:"" }}';
                         compradorSelect.innerHTML = '<option value="">Seleccione comprador</option>';
                         
                         data.compradores.forEach(comprador => {
@@ -371,8 +403,12 @@
 
             // === EVENT LISTENERS ===
             formaPagoSelect.addEventListener('change', toggleCamposCheque);
+            
+            {% if not modo == 'editar' %}
+            // Solo agregar listeners en modo crear
             document.getElementById('btn-agregar-destino').addEventListener('click', () => abrirModal('modal-destino'));
             document.getElementById('btn-agregar-comprador').addEventListener('click', () => abrirModal('modal-comprador'));
+            {% endif %}
 
             // === VALIDACIÓN DEL FORMULARIO ===
             document.getElementById('ingreso-form').addEventListener('submit', function(e) {
@@ -405,7 +441,8 @@
             document.getElementById('{{ formulario.fecha.id_for_label }}').focus();
         });
 
-        // === FUNCIONES GLOBALES PARA MODALES ===
+        {% if not modo == 'editar' %}
+        // === FUNCIONES GLOBALES PARA MODALES (solo en modo crear) ===
         function abrirModal(modalId) {
             document.getElementById(modalId).classList.remove('hidden');
         }
@@ -495,6 +532,7 @@
                 cerrarModal(e.target.id);
             }
         });
+        {% endif %}
     </script>
 
     <style>

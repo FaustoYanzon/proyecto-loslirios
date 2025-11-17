@@ -1,7 +1,11 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
+# Autenticación
+    path('login/', views.CustomLoginView.as_view(), name='login'),
+    path('logout/', views.custom_logout, name='logout'),
+#Página principal
     path('', views.main, name='main'),
 #URLs for main page
     path('api/parcelas/', views.parcelas_geojson, name='parcelas_geojson'),
@@ -12,6 +16,8 @@ urlpatterns = [
     path('administracion/movimientos/cargar', views.cargar_movimiento, name='cargar_movimiento'), 
     path('administracion/movimientos/consultar', views.consultar_movimiento, name='consultar_movimiento'),
     path('administracion/movimientos/exportar/csv', views.exportar_movimientos_csv, name='exportar_movimientos_csv'),
+    path('administracion/movimientos/editar/<int:id>/', views.editar_movimiento, name='editar_movimiento'),
+    path('administracion/movimientos/eliminar/<int:id>/', views.eliminar_movimiento, name='eliminar_movimiento'),
     #APIs
     path('api/administracion/get-tasks/<str:classification>/', views.get_tasks_for_classification, name='get_tasks_for_classification'),
     path('api/administracion/get-classifications/<str:tipo>/', views.get_classifications_for_type, name='get_classifications_for_type'),
@@ -23,16 +29,22 @@ urlpatterns = [
     path('administracion/ingresos/cargar', views.cargar_ingresos, name='cargar_ingresos'),
     path('administracion/ingresos/consultar', views.consultar_ingresos, name='consultar_ingresos'),
     path('administracion/ingresos/exportar/csv', views.exportar_ingresos_csv, name='exportar_ingresos_csv'),
+    path('administracion/ingresos/editar/<int:id>/', views.editar_ingreso, name='editar_ingreso'),
+    path('administracion/ingresos/eliminar/<int:id>/', views.eliminar_ingreso, name='eliminar_ingreso'),
 #URLs for Producción
     path('produccion/', views.produccion, name='produccion'),
     #URLs for Jornales
     path('produccion/jornales/cargar', views.cargar_jornal, name='cargar_jornal'),
     path('produccion/jornales/consultar', views.consultar_jornal, name='consultar_jornal'),
     path('produccion/jornales/exportar/csv', views.exportar_jornales_csv, name='exportar_jornales_csv'),
+    path('administracion/jornales/editar/<int:id>/', views.editar_jornal, name='editar_jornal'),
+    path('administracion/jornales/eliminar/<int:id>/', views.eliminar_jornal, name='eliminar_jornal'),
     # URLs para Riego y Fertilización
     path('produccion/riego/cargar/', views.cargar_riego, name='cargar_riego'),
     path('produccion/riego/consultar/', views.consultar_riego, name='consultar_riego'),
     path('produccion/riego/exportar/csv/', views.exportar_riegos_csv, name='exportar_riegos_csv'),
+    path('produccion/riego/editar/<int:id>/', views.editar_riego, name='editar_riego'),
+    path('produccion/riego/eliminar/<int:id>/', views.eliminar_riego, name='eliminar_riego'),
     # APIs 
     path('api/produccion/get-parrales/<str:cabezal>/', views.get_parrales_for_cabezal, name='get_parrales_for_cabezal'),
     path('api/produccion/get-valvulas/<str:cabezal>/<str:parral>/', views.get_valvulas_for_parral, name='get_valvulas_for_parral'),
@@ -40,12 +52,18 @@ urlpatterns = [
     path('produccion/cosecha/cargar/', views.cargar_cosecha, name='cargar_cosecha'),
     path('produccion/cosecha/consultar/', views.consultar_cosecha, name='consultar_cosecha'),
     path('produccion/cosecha/exportar/csv/', views.exportar_cosecha_csv, name='exportar_cosecha_csv'),
+    path('produccion/cosecha/editar/<int:id>/', views.editar_cosecha, name='editar_cosecha'),
+    path('produccion/cosecha/eliminar/<int:id>/', views.eliminar_cosecha, name='eliminar_cosecha'),
 #URLs for Analisis
     path('analisis/', views.analisis, name='analisis'),
     path('visualizacion/analisis/movimientos/', views.analisis_movimientos, name='analisis_movimientos'),
+    path('api/dashboard/kpis/', views.dashboard_kpis_api, name='dashboard_kpis_api'),
     # URL para la nueva API del gráfico de líneas
     path('api/visualizacion/movimientos/line-chart-data/', views.line_chart_data_api, name='line_chart_data_api'),
 #URLs for Flujo de Caja
     path('flujo/flujo_anual/', views.flujo_anual, name='flujo_anual'),
     path('analisis/flujo_anual/sueldos/', views.sueldos_flujo_anual, name='sueldos_flujo_anual'),
+#BÚSQUEDA AVANZADA Y EXPORTACIÓN
+    path('administracion/busqueda-avanzada/movimientos/', views.busqueda_avanzada_movimientos, name='busqueda_avanzada_movimientos'),
+    path('administracion/exportar/movimientos/excel/', views.exportar_excel_movimientos, name='exportar_excel_movimientos'),
     ]

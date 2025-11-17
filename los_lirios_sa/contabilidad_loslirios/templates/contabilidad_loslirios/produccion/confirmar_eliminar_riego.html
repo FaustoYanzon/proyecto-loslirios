@@ -1,0 +1,74 @@
+{% extends "contabilidad_loslirios/main.html" %}
+{% load static %}
+
+{% block titulo %}Confirmar Eliminación - Los Lirios SA{% endblock titulo %}
+
+{% block contenido %}
+    <div class="max-w-2xl mx-auto">
+        <div class="card-enhanced">
+            <div class="bg-red-600 px-6 py-4">
+                <h3 class="font-semibold flex items-center text-white">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Confirmar Eliminación de Registro de Riego
+                </h3>
+            </div>
+            
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <i class="fas fa-tint text-6xl text-red-400 mb-4"></i>
+                    
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">
+                        ¿Estás seguro de que deseas eliminar este registro de riego?
+                    </h4>
+                    
+                    <div class="bg-gray-50 rounded-lg p-4 text-left">
+                        <h5 class="font-semibold text-gray-700 mb-2">Detalles del registro:</h5>
+                        
+                        <ul class="space-y-1 text-sm text-gray-600">
+                            <li><strong>Fecha Inicio:</strong> {{ riego.inicio|date:"d/m/Y H:i" }}</li>
+                            <li><strong>Fecha Fin:</strong> {{ riego.fin|date:"d/m/Y H:i" }}</li>
+                            <li><strong>Cabezal:</strong> {{ riego.cabezal }}</li>
+                            <li><strong>Parral/Potrero:</strong> {{ riego.parral }}</li>
+                            <li><strong>Válvula:</strong> {{ riego.valvula_abierta }}</li>
+                            <li><strong>Total Horas:</strong> {{ riego.total_horas }} hrs</li>
+                            <li><strong>Responsable:</strong> {{ riego.responsable }}</li>
+                            {% if riego.fertilizante_nombre %}
+                                <li><strong>Fertilizante:</strong> {{ riego.fertilizante_nombre }} ({{ riego.fertilizante_litros|floatformat:2 }} L)</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <div class="flex">
+                        <i class="fas fa-exclamation-triangle text-red-400 mr-3 mt-0.5"></i>
+                        <div>
+                            <h5 class="font-semibold text-red-800">¡Atención!</h5>
+                            <p class="text-red-700 text-sm">
+                                Esta acción eliminará permanentemente el registro de riego. 
+                                Toda la información asociada se perderá y no podrá ser recuperada.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4">
+                <div class="flex justify-between items-center">
+                    <a href="{% url 'consultar_riego' %}" class="btn bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        Cancelar
+                    </a>
+                    
+                    <form method="POST" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded">
+                            <i class="fas fa-trash mr-2"></i>
+                            Sí, Eliminar Definitivamente
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock contenido %}

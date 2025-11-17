@@ -205,15 +205,24 @@
                         </td>
                         <td class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <div class="flex justify-center space-x-2">
+                                <!-- Botón Ver detalle -->
                                 <button onclick="verDetalle({{ registro.id_registro }})" 
-                                        class="text-blue-600 hover:text-blue-900" title="Ver detalle">
+                                        class="text-blue-600 hover:text-blue-900 transition-colors duration-150"
+                                        data-tooltip="Ver detalle completo">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                <a href="#" class="text-green-600 hover:text-green-900" title="Editar">
+                                
+                                <!-- Botón Editar - AGREGADO -->
+                                <a href="{% url 'editar_jornal' registro.id_registro %}" 
+                                   class="text-green-600 hover:text-green-900 transition-colors duration-150"
+                                   data-tooltip="Editar registro">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <button onclick="confirmarEliminar({{ registro.id_registro }})" 
-                                        class="text-red-600 hover:text-red-900" title="Eliminar">
+                                
+                                <!-- Botón Eliminar - AGREGADO -->
+                                <button onclick="confirmarEliminar('{{ registro.nombre_trabajador }} - {{ registro.fecha|date:'d/m/Y' }} - {{ registro.tarea }}', '{% url 'eliminar_jornal' registro.id_registro %}')" 
+                                        class="text-red-600 hover:text-red-900 transition-colors duration-150"
+                                        data-tooltip="Eliminar registro">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -379,12 +388,28 @@
 
         // Funciones para acciones de tabla
         function verDetalle(id) {
-            alert('Ver detalle del jornal ID: ' + id);
+            // Implementar modal de detalle
+            fetch(`/produccion/jornal/detalle/${id}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('contenido-detalle').innerHTML = data.html;
+                        document.getElementById('modal-detalle').classList.remove('hidden');
+                    } else {
+                        alert('Error al cargar el detalle');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error de conexión');
+                });
         }
 
-        function confirmarEliminar(id) {
-            if (confirm('¿Está seguro de que desea eliminar este registro?')) {
-                alert('Eliminar jornal ID: ' + id);
+        // FUNCIÓN CORREGIDA para eliminar
+        function confirmarEliminar(descripcion, url) {
+            if (confirm(`¿Estás seguro de que deseas eliminar el registro de jornal "${descripcion}"?\n\nEsta acción no se puede deshacer.`)) {
+                // Redirigir directamente a la URL de eliminación
+                window.location.href = url;
             }
         }
 
@@ -395,6 +420,13 @@
         // Cerrar modal al hacer clic fuera
         document.getElementById('modal-detalle').addEventListener('click', function(e) {
             if (e.target === this) {
+                cerrarModal();
+            }
+        });
+
+        // Cerrar modal con tecla ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
                 cerrarModal();
             }
         });

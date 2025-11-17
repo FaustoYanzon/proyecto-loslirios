@@ -1,7 +1,9 @@
 {% extends "contabilidad_loslirios/main.html" %}
 {% load static %}
 
-{% block titulo %}Cargar Jornales - Los Lirios SA{% endblock titulo %}
+{% block titulo %}
+    {% if modo == 'editar' %}Editar Jornal{% else %}Cargar Jornales{% endif %} - Los Lirios SA
+{% endblock titulo %}
 
 {% block contenido %}
     {# Mensajes de Django (Toastify-js los leerá y los mostrará) #}
@@ -17,9 +19,97 @@
         <a href="{% url 'produccion' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
             <i class="fas fa-arrow-left mr-2"></i> Volver a Producción
         </a>
-        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Cargar Jornales</h1>
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">
+            {% if modo == 'editar' %}
+                Editar Registro de Jornal
+            {% else %}
+                Cargar Jornales
+            {% endif %}
+        </h1>
     </div>
 
+    <!-- Indicador de modo edición -->
+    {% if modo == 'editar' %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+            <span class="text-blue-800 font-medium">
+                Editando jornal de {{ jornal.nombre_trabajador }} del {{ jornal.fecha|date:"d/m/Y" }} - {{ jornal.tarea }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Modo edición: formulario simple -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                    <label for="{{ formulario.fecha.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.fecha.label }}:</label>
+                    {{ formulario.fecha }}
+                    {% if formulario.fecha.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.fecha.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.nombre_trabajador.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.nombre_trabajador.label }}:</label>
+                    {{ formulario.nombre_trabajador }}
+                    {% if formulario.nombre_trabajador.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.nombre_trabajador.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.clasificacion.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.clasificacion.label }}:</label>
+                    {{ formulario.clasificacion }}
+                    {% if formulario.clasificacion.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.clasificacion.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.tarea.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.tarea.label }}:</label>
+                    {{ formulario.tarea }}
+                    {% if formulario.tarea.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.tarea.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.detalle.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.detalle.label }}:</label>
+                    {{ formulario.detalle }}
+                    {% if formulario.detalle.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.detalle.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.cantidad.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.cantidad.label }}:</label>
+                    {{ formulario.cantidad }}
+                    {% if formulario.cantidad.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.cantidad.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.unidad_medida.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.unidad_medida.label }}:</label>
+                    {{ formulario.unidad_medida }}
+                    {% if formulario.unidad_medida.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.unidad_medida.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.precio.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.precio.label }}:</label>
+                    {{ formulario.precio }}
+                    {% if formulario.precio.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.precio.errors|first }}</p>{% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ formulario.ubicacion.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">{{ formulario.ubicacion.label }}:</label>
+                    {{ formulario.ubicacion }}
+                    {% if formulario.ubicacion.errors %}<p class="text-red-500 text-xs italic mt-1">{{ formulario.ubicacion.errors|first }}</p>{% endif %}
+                </div>
+            </div>
+            
+            <div class="flex justify-center mt-6">
+                <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg font-medium flex items-center transition-colors">
+                    <i class="fas fa-save mr-2"></i>Actualizar Jornal
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    {% else %}
+    <!-- Modo creación: formset -->
     <div class="bg-white p-6 rounded-lg shadow-md">
         <form method="post" id="formulario-jornales" class="space-y-4">
             {% csrf_token %}
@@ -80,10 +170,60 @@
             </div>
         </form>
     </div>
+    {% endif %}
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // === CONFIGURACIÓN INICIAL ===
+        {% if modo == 'editar' %}
+        // === MODO EDICIÓN: Lógica simplificada para un solo formulario ===
+        const clasificacionSelect = document.querySelector('select[name$="clasificacion"]');
+        const tareaSelect = document.querySelector('select[name$="tarea"]');
+        
+        function actualizarTareas() {
+            const clasificacion = clasificacionSelect.value;
+            
+            if (!clasificacion) {
+                tareaSelect.innerHTML = '<option value="">Seleccione una clasificación primero</option>';
+                tareaSelect.disabled = true;
+                return;
+            }
+
+            tareaSelect.innerHTML = '<option value="">Cargando...</option>';
+            tareaSelect.disabled = true;
+
+            fetch(`/api/administracion/get-tasks/${clasificacion}/`)
+                .then(response => response.json())
+                .then(data => {
+                    tareaSelect.innerHTML = '<option value="">Seleccione una tarea</option>';
+                    
+                    data.tasks.forEach(function(task) {
+                        const option = new Option(task, task);
+                        // MANTENER VALOR ACTUAL EN MODO EDICIÓN
+                        if ('{{ formulario.tarea.value }}' === task) {
+                            option.selected = true;
+                        }
+                        tareaSelect.add(option);
+                    });
+                    
+                    tareaSelect.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error al cargar tareas:', error);
+                    tareaSelect.innerHTML = '<option value="">Error al cargar tareas</option>';
+                    tareaSelect.disabled = true;
+                });
+        }
+
+        if (clasificacionSelect) {
+            clasificacionSelect.addEventListener('change', actualizarTareas);
+            // Cargar tareas al inicio si hay clasificación seleccionada
+            if (clasificacionSelect.value) {
+                actualizarTareas();
+            }
+        }
+        
+        {% else %}
+        // === MODO CREACIÓN: Lógica de formset completa ===
         const tabla = document.getElementById('tabla-jornales').getElementsByTagName('tbody')[0];
         const btnAgregar = document.getElementById('btn-agregar');
         const totalForms = document.getElementById('id_form-TOTAL_FORMS');
@@ -241,6 +381,7 @@
 
         // === INICIALIZACIÓN ===
         initializeClasificacionEvents();
+        {% endif %}
     });
     </script>
 

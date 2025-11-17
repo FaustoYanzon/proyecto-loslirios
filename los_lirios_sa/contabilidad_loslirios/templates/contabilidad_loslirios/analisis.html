@@ -11,168 +11,352 @@
         <a href="{% url 'analisis_movimientos' %}" class="btn bg-gray-800 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium">Movimientos</a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">Costo Total</h4>
-            <p class="text-3xl font-bold text-gray-800">${{ kpis.costo_total|floatformat:2|intcomma }}</p>
+    <!-- KPIs MEJORADOS -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="flex items-center">
+                <i class="fas fa-dollar-sign text-blue-600 text-2xl mr-3"></i>
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">Costo Total</h4>
+                    <p class="text-2xl font-bold text-blue-600">${{ kpis.costo_total|floatformat:2|intcomma }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">Registros Totales</h4>
-            <p class="text-3xl font-bold text-gray-800">{{ kpis.total_registros }}</p>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+            <div class="flex items-center">
+                <i class="fas fa-users text-green-600 text-2xl mr-3"></i>
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">Trabajadores Activos</h4>
+                    <p class="text-2xl font-bold text-green-600">{{ kpis.trabajadores_activos }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">Trabajadores Activos</h4>
-            <p class="text-3xl font-bold text-gray-800">{{ kpis.trabajadores_activos }}</p>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+            <div class="flex items-center">
+                <i class="fas fa-star text-purple-600 text-2xl mr-3"></i>
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">Más Productivo</h4>
+                    <p class="text-lg font-bold text-purple-600">{{ kpis.trabajador_mas_productivo.nombre_trabajador|default:"N/A" }}</p>
+                    <p class="text-xs text-gray-500">${{ kpis.trabajador_mas_productivo.total|floatformat:0|default:"0" }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow text-center">
-            <h4 class="text-sm font-semibold text-gray-500">Costo Promedio / Registro</h4>
-            <p class="text-3xl font-bold text-gray-800">${{ kpis.costo_promedio|floatformat:2|intcomma }}</p>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
+            <div class="flex items-center">
+                <i class="fas fa-chart-line text-orange-600 text-2xl mr-3"></i>
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-500">Costo por Hectárea</h4>
+                    <p class="text-2xl font-bold text-orange-600">${{ kpis.costo_por_hectarea|floatformat:0|default:"N/A" }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 grid grid-rows-2 gap-6">
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <!-- COLUMNA IZQUIERDA - GRÁFICOS (3/4) -->
+        <div class="xl:col-span-3 space-y-6">
+            
+            <!-- NUEVO LAYOUT: Evolución de Costos - ANCHO COMPLETO -->
             <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Costo de Mano de Obra Mensual</h3>
-                <!-- Agrega esto arriba del gráfico de líneas -->
-                <form method="get" id="agrupacion-form" class="mb-4">
-                    <label for="agrupacion" class="font-semibold">Ver por:</label>
-                    <select name="agrupacion" id="agrupacion" class="form-control inline w-auto ml-2">
-                        <option value="anio" {% if request.GET.agrupacion == "anio" %}selected{% endif %}>Año</option>
-                        <option value="trimestre" {% if request.GET.agrupacion == "trimestre" %}selected{% endif %}>Trimestre</option>
-                        <option value="mes" {% if request.GET.agrupacion == "mes" or not request.GET.agrupacion %}selected{% endif %}>Mes</option>
-                        <option value="dia" {% if request.GET.agrupacion == "dia" %}selected{% endif %}>Día</option>
-                    </select>
-                </form>
-                <script>
-                document.getElementById('agrupacion').addEventListener('change', function() {
-                    document.getElementById('agrupacion-form').submit();
-                });
-                </script>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-lg">Evolución de Costos</h3>
+                    <div>
+                        <label for="agrupacion" class="text-sm font-medium">Ver por:</label>
+                        <select name="agrupacion" id="agrupacion-select" class="form-control inline w-auto ml-2">
+                            <option value="dia" {% if agrupacion == 'dia' %}selected{% endif %}>Día</option>
+                            <option value="mes" {% if agrupacion == 'mes' %}selected{% endif %}>Mes</option>
+                            <option value="trimestre" {% if agrupacion == 'trimestre' %}selected{% endif %}>Trimestre</option>
+                            <option value="anio" {% if agrupacion == 'anio' %}selected{% endif %}>Año</option>
+                        </select>
+                    </div>
+                </div>
                 <canvas id="lineChart"></canvas>
             </div>
+
+            <!-- NUEVO LAYOUT: Costos por Tarea - ANCHO COMPLETO -->
             <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Costo Total por Tarea</h3>
+                <h3 class="font-semibold text-lg mb-4">Costos por Tarea</h3>
                 <canvas id="barChart"></canvas>
+            </div>
+
+            <!-- NUEVO LAYOUT: Gráficos de Temporada - 2 COLUMNAS -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="font-semibold text-lg mb-4">Distribución por Temporada</h3>
+                    <canvas id="pieChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="font-semibold text-lg mb-4">Análisis por Temporada</h3>
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- TABLA RESUMEN POR TAREA -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-lg">Resumen por Tarea</h3>
+                    <span class="text-sm text-gray-500">{{ kpis.total_registros }} registros totales</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarea</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registros</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Total</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Promedio</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Eficiencia</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% del Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for tarea in resumen_tareas %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="text-sm font-medium text-gray-900">{{ tarea.tarea }}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="text-sm text-gray-900">{{ tarea.registros }}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="text-sm font-bold text-green-600">${{ tarea.costo_total|floatformat:2|intcomma }}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="text-sm text-gray-900">${{ tarea.costo_promedio|floatformat:2 }}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ tarea.eficiencia_porcentaje }}%"></div>
+                                        </div>
+                                        <span class="text-sm text-gray-600">{{ tarea.eficiencia|floatformat:1 }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        {% if tarea.porcentaje_total > 20 %}bg-red-100 text-red-800{% elif tarea.porcentaje_total > 10 %}bg-yellow-100 text-yellow-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                        {{ tarea.porcentaje_total|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-rows-2 gap-6">
+        <!-- COLUMNA DERECHA - FILTROS Y EFICIENCIA (1/4) -->
+        <div class="xl:col-span-1 space-y-6">
+            <!-- Filtros -->
             <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Distribución por Temporada</h3>
-                <canvas id="pieChart"></canvas>
-            </div>
-            
-            <div class="bg-white p-4 rounded-lg shadow">
                 <h3 class="font-semibold text-lg mb-4">Filtros</h3>
                 <form method="GET" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ form.fecha_desde.label }}</label>
+                        <label class="block text-sm font-medium">{{ form.fecha_desde.label }}</label>
                         {{ form.fecha_desde }}
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ form.fecha_hasta.label }}</label>
+                        <label class="block text-sm font-medium">{{ form.fecha_hasta.label }}</label>
                         {{ form.fecha_hasta }}
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ form.clasificacion.label }}</label>
-                        <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2">
                             {{ form.clasificacion }}
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ form.tarea.label }}</label>
-                        <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2">
                             {{ form.tarea }}
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ form.ubicacion.label }}</label>
-                        <div class="max-h-32 overflow-y-auto border rounded-md p-2 text-sm">
+                        <div class="max-h-32 overflow-y-auto border rounded-md p-2">
                             {{ form.ubicacion }}
                         </div>
                     </div>
                     <button type="submit" class="w-full btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">Aplicar Filtros</button>
                 </form>
             </div>
+
+            <!-- EFICIENCIA POR TRABAJADOR -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg mb-4">Top 5 Eficiencia</h3>
+                <div class="space-y-3">
+                    {% for trabajador in eficiencia_trabajadores %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">{{ trabajador.nombre_trabajador }}</p>
+                            <p class="text-xs text-gray-500">{{ trabajador.registros }} registros</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-bold text-green-600">${{ trabajador.eficiencia|floatformat:0 }}</p>
+                            <p class="text-xs text-gray-500">promedio</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // --- GRÁFICO DE LÍNEAS ---
-    const lineCtx = document.getElementById('lineChart').getContext('2d');
-    new Chart(lineCtx, {
-        type: 'line',
-        data: {
-            labels: {{ line_chart_labels|safe }},
-            datasets: [{
-                label: 'Costo Total por Mes',
-                data: {{ line_chart_data|safe }},
-                borderColor: 'rgba(54, 162, 235, 1)',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                fill: true,
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Datos desde Django
+        const lineChartLabels = {{ line_chart_labels|safe }};
+        const lineChartData = {{ line_chart_data|safe }};
+        const barChartLabels = {{ bar_chart_labels|safe }};
+        const barChartData = {{ bar_chart_data|safe }};
+        const pieChartLabels = {{ pie_chart_labels|safe }};
+        const pieChartData = {{ pie_chart_data|safe }};
+        
+        // NUEVO: Datos para el radar
+        const radarLabels = {{ radar_labels|safe }};
+        const radarData = {{ radar_data|safe }};
+
+        // Configuración de colores
+        const colors = {
+            primary: 'rgba(59, 130, 246, 0.8)',
+            secondary: 'rgba(16, 185, 129, 0.8)',
+            accent: 'rgba(245, 158, 11, 0.8)',
+            danger: 'rgba(239, 68, 68, 0.8)',
+            purple: 'rgba(139, 92, 246, 0.8)'
+        };
+
+        // 1. Gráfico de Líneas
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: lineChartLabels,
+                datasets: [{
+                    label: 'Costo Total',
+                    data: lineChartData,
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primary.replace('0.8', '0.2'),
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
                 }
             }
-        }
-    });
+        });
 
-    // --- GRÁFICO DE BARRAS ---
-    const barCtx = document.getElementById('barChart').getContext('2d');
-    new Chart(barCtx, {
-        type: 'bar',
-        data: {
-            labels: {{ bar_chart_labels|safe }},
-            datasets: [{
-                label: 'Costo Total por Tarea',
-                data: {{ bar_chart_data|safe }},
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            indexAxis: 'y', 
-            responsive: true,
-            scales: {
-                x: {
-                    beginAtZero: true
+        // 2. Gráfico de Barras
+        const barCtx = document.getElementById('barChart').getContext('2d');
+        new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: barChartLabels,
+                datasets: [{
+                    label: 'Costo Total',
+                    data: barChartData,
+                    backgroundColor: colors.secondary
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
                 }
             }
-        }
-    });
+        });
 
-    // --- GRÁFICO DE TORTA ---
-    const pieCtx = document.getElementById('pieChart').getContext('2d');
-    new Chart(pieCtx, {
-        type: 'pie',
-        data: {
-            labels: {{ pie_chart_labels|safe }},
-            datasets: [{
-                label: 'Distribución de Costos',
-                data: {{ pie_chart_data|safe }},
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.7)',
-                    'rgba(54, 162, 235, 0.7)',
-                    'rgba(255, 206, 86, 0.7)',
-                    'rgba(75, 192, 192, 0.7)',
-                    'rgba(153, 102, 255, 0.7)'
-                ],
-            }]
-        },
-        options: {
-            responsive: true
-        }
-    });
-});
-</script>
+        // 3. Gráfico de Torta
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: pieChartLabels,
+                datasets: [{
+                    data: pieChartData,
+                    backgroundColor: [
+                        colors.primary,
+                        colors.secondary,
+                        colors.accent,
+                        colors.danger,
+                        colors.purple
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
 
+        // 4. NUEVO: Gráfico de Radar
+        const radarCtx = document.getElementById('radarChart').getContext('2d');
+        new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: radarLabels,
+                datasets: [{
+                    label: 'Costo por Temporada',
+                    data: radarData,
+                    borderColor: colors.purple,
+                    backgroundColor: colors.purple.replace('0.8', '0.2'),
+                    pointBackgroundColor: colors.purple,
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: colors.purple
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + (value/1000).toFixed(0) + 'K';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Actualizar gráficos al cambiar agrupación
+        document.getElementById('agrupacion-select').addEventListener('change', function() {
+            const agrupacion = this.value;
+            const url = new URL(window.location);
+            url.searchParams.set('agrupacion', agrupacion);
+            window.location = url;
+        });
+    });
+    </script>
 {% endblock contenido %}

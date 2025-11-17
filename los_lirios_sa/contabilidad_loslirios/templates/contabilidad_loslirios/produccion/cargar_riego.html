@@ -1,7 +1,9 @@
 {% extends "contabilidad_loslirios/main.html" %}
 {% load static %}
 
-{% block titulo %}Cargar Riego y Fertilización - Los Lirios SA{% endblock titulo %}
+{% block titulo %}
+    {% if modo == 'editar' %}Editar Riego{% else %}Cargar Riego y Fertilización{% endif %} - Los Lirios SA
+{% endblock titulo %}
 
 {% block contenido %}
     {# Mensajes de Django (Toastify-js los leerá y los mostrará) #}
@@ -17,8 +19,26 @@
         <a href="{% url 'produccion' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
             <i class="fas fa-arrow-left mr-2"></i> Volver a Producción
         </a>
-        <h1 class="text-2xl font-semibold text-gray-800 ml-4">Cargar Registro de Riego y Fertilización</h1>
+        <h1 class="text-2xl font-semibold text-gray-800 ml-4">
+            {% if modo == 'editar' %}
+                Editar Registro de Riego y Fertilización
+            {% else %}
+                Cargar Registro de Riego y Fertilización
+            {% endif %}
+        </h1>
     </div>
+
+    <!-- Indicador de modo edición -->
+    {% if modo == 'editar' %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+            <span class="text-blue-800 font-medium">
+                Editando registro del {{ riego.inicio|date:"d/m/Y H:i" }} - {{ riego.parral }} ({{ riego.cabezal }})
+            </span>
+        </div>
+    </div>
+    {% endif %}
 
     <form method="post" id="form-riego" class="bg-white p-8 rounded-lg shadow-md">
         {% csrf_token %}
@@ -85,7 +105,11 @@
 
         <div class="mt-8 flex justify-center">
             <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-medium flex items-center text-lg">
-                <i class="fas fa-save mr-2"></i> Guardar Registro
+                {% if modo == 'editar' %}
+                    <i class="fas fa-save mr-2"></i> Actualizar Registro
+                {% else %}
+                    <i class="fas fa-save mr-2"></i> Guardar Registro
+                {% endif %}
             </button>
         </div>
     </form>
@@ -109,8 +133,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         const option = document.createElement('option');
                         option.value = parral;
                         option.textContent = parral;
+                        // AGREGADO: Seleccionar valor actual en modo edición
+                        if ('{{ form.parral.value }}' === parral) {
+                            option.selected = true;
+                        }
                         parralSelect.appendChild(option);
                     });
+                    // AGREGADO: Actualizar válvulas si estamos en modo edición
+                    {% if modo == 'editar' %}
+                        updateValvulas();
+                    {% endif %}
                 })
                 .catch(error => console.error('Error:', error));
         }
@@ -129,6 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         const option = document.createElement('option');
                         option.value = valvula;
                         option.textContent = valvula;
+                        // AGREGADO: Seleccionar valor actual en modo edición
+                        if ('{{ form.valvula_abierta.value }}' === valvula) {
+                            option.selected = true;
+                        }
                         valvulaSelect.appendChild(option);
                     });
                 })
@@ -139,8 +175,14 @@ document.addEventListener('DOMContentLoaded', function() {
     cabezalSelect.addEventListener('change', updateParrales);
     parralSelect.addEventListener('change', updateValvulas);
 
-    // Initial state
-    updateParrales();
+    // MODIFICADO: Cargar inicial para modo edición
+    {% if modo == 'editar' %}
+        // En modo edición, cargar los parrales para el cabezal seleccionado
+        updateParrales();
+    {% else %}
+        // Initial state para modo crear
+        updateParrales();
+    {% endif %}
 });
 </script>
 {% endblock contenido %}

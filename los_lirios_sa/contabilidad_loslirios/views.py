@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .forms import *
 from .models import *
 from django.db.models import Q, Sum, F, Value, CharField, ExpressionWrapper, DecimalField
@@ -13,10 +13,13 @@ from django.http import JsonResponse
 import json
 from decimal import Decimal
 from django.forms import modelformset_factory
-from django.db.models import Sum
+from django.db.models import Sum, Avg, Max, Min, Count
 from django.db.models.functions import TruncMonth
 from datetime import datetime
 from collections import defaultdict
+from django.contrib.auth import login, logout
+from django.contrib.auth.views import LoginView
+from django.urls import reverse_lazy
 
 # Create your views here.
 #Logic for main page
@@ -81,8 +84,27 @@ def parcelas_geojson(request):
     
     return JsonResponse(geojson_data)
 
+#Logic for login/logout
+class CustomLoginView(LoginView):
+    form_class = CustomLoginForm
+    template_name = 'registration/login.html'
+    success_url = reverse_lazy('main')
+    
+    def get_success_url(self):
+        return reverse_lazy('main')
+    
+    def form_valid(self, form):
+        """Agregar mensaje de bienvenida"""
+        response = super().form_valid(form)
+        messages.success(self.request, f'¡Bienvenido de nuevo, {self.request.user.username}!')
+        return response
 
-
+@login_required
+def custom_logout(request):
+    username = request.user.username
+    logout(request)
+    messages.success(request, f'Sesión cerrada exitosamente. ¡Hasta luego, {username}!')
+    return redirect('login')
 
 
 #Logic for administracion page:
@@ -646,7 +668,7 @@ def _obtener_riegos_filtrados(request):
 @login_required
 def cargar_cosecha(request):
     if request.method == 'POST':
-        form = CosechaForm(request.POST)
+        form = RegistroCosechaForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, 'Registro de cosecha guardado exitosamente.')
@@ -654,7 +676,7 @@ def cargar_cosecha(request):
         else:
             messages.error(request, 'Error al guardar el registro. Por favor, revise los datos.')
     else:
-        form = CosechaForm()
+        form = RegistroCosechaForm()
     
     # Obtener opciones para datalists
     fincas = list(set([choice[0] for choice in FINCA_CHOICES] + 
@@ -796,7 +818,7 @@ def analisis(request):
         if form.cleaned_data.get('ubicacion'):
             queryset = queryset.filter(ubicacion__in=form.cleaned_data['ubicacion'])
 
-    # --- 2. CALCULAR KPIs ---
+    # --- 2. CALCULAR KPIs MEJORADOS ---
     costo_total_calculado = queryset.annotate(
         costo=ExpressionWrapper(
             F('cantidad') * F('precio'),
@@ -804,16 +826,62 @@ def analisis(request):
         )
     ).aggregate(total=Coalesce(Sum('costo'), Decimal('0.00'), output_field=DecimalField()))
     
+    # CORREGIDO: Trabajador más productivo
+    trabajador_mas_productivo = queryset.annotate(
+        costo=ExpressionWrapper(
+            F('cantidad') * F('precio'),
+            output_field=DecimalField()
+        )
+    ).values('nombre_trabajador').annotate(
+        total=Sum('costo')
+    ).order_by('-total').first()
+    
+    # Costo por hectárea (asumiendo que las ubicaciones representan hectáreas)
+    ubicaciones_count = queryset.values('ubicacion').distinct().count()
+    costo_por_hectarea = (costo_total_calculado['total'] / ubicaciones_count) if ubicaciones_count > 0 else 0
+
     kpis = {
         'costo_total': costo_total_calculado['total'],
         'total_registros': queryset.count(),
         'trabajadores_activos': queryset.values('nombre_trabajador').distinct().count(),
+        'trabajador_mas_productivo': trabajador_mas_productivo,  # Ya contiene nombre_trabajador y total
+        'costo_por_hectarea': costo_por_hectarea,
     }
-    kpis['costo_promedio'] = kpis['costo_total'] / kpis['total_registros'] if kpis['total_registros'] > 0 else 0
 
+    # --- 3. EFICIENCIA POR TRABAJADOR (TOP 5) ---
+    eficiencia_trabajadores = queryset.annotate(
+        costo=ExpressionWrapper(
+            F('cantidad') * F('precio'),
+            output_field=DecimalField()
+        )
+    ).values('nombre_trabajador').annotate(
+        total_costo=Sum('costo'),
+        registros=Count('id_registro'),
+        eficiencia=Avg('costo')
+    ).order_by('-total_costo')[:5]
 
-    # --- 3. DATOS PARA GRÁFICOS (usando el queryset filtrado) ---
-    # Gráfico de Líneas
+    # --- 4. RESUMEN POR TAREA ---
+    resumen_tareas = queryset.annotate(
+        costo=ExpressionWrapper(
+            F('cantidad') * F('precio'),
+            output_field=DecimalField()
+        )
+    ).values('tarea').annotate(
+        registros=Count('id_registro'),
+        costo_total=Sum('costo'),
+        costo_promedio=Avg('costo'),
+        eficiencia=Avg('costo')
+    ).order_by('-costo_total')
+
+    # Calcular porcentajes y eficiencia relativa
+    costo_total_global = sum([t['costo_total'] for t in resumen_tareas]) if resumen_tareas else 1
+    eficiencia_max = max([t['eficiencia'] for t in resumen_tareas]) if resumen_tareas else 1
+
+    for tarea in resumen_tareas:
+        tarea['porcentaje_total'] = (tarea['costo_total'] / costo_total_global * 100) if costo_total_global > 0 else 0
+        tarea['eficiencia_porcentaje'] = (tarea['eficiencia'] / eficiencia_max * 100) if eficiencia_max > 0 else 0
+
+    # --- 5. DATOS PARA GRÁFICOS ---
     agrupacion = request.GET.get('agrupacion', 'mes')
 
     if agrupacion == 'anio':
@@ -846,7 +914,7 @@ def analisis(request):
             Cast(F('cantidad'), output_field=DecimalField()) * Cast(F('precio'), output_field=DecimalField()),
             output_field=DecimalField()
         )
-    ).values('tarea').annotate(total_costo=Sum('costo')).order_by('-total_costo')
+    ).values('tarea').annotate(total_costo=Sum('costo')).order_by('-total_costo')[:10]  # Top 10
     bar_chart_labels = [c['tarea'] for c in costo_por_tarea]
     bar_chart_data = [float(c['total_costo']) for c in costo_por_tarea]
     
@@ -860,16 +928,24 @@ def analisis(request):
     pie_chart_labels = [c['clasificacion'] for c in costo_por_clasificacion]
     pie_chart_data = [float(c['total_costo']) for c in costo_por_clasificacion]
     
+    # Gráfico de Radar (distribución por temporada)
+    radar_labels = pie_chart_labels  # Usar las mismas clasificaciones
+    radar_data = pie_chart_data
+    
     # --- CONTEXTO PARA LA PLANTILLA ---
     context = {
         'form': form,
         'kpis': kpis,
+        'eficiencia_trabajadores': eficiencia_trabajadores,
+        'resumen_tareas': resumen_tareas,
         'line_chart_labels': json.dumps(line_chart_labels),
         'line_chart_data': json.dumps(line_chart_data),
         'bar_chart_labels': json.dumps(bar_chart_labels),
         'bar_chart_data': json.dumps(bar_chart_data),
         'pie_chart_labels': json.dumps(pie_chart_labels),
         'pie_chart_data': json.dumps(pie_chart_data),
+        'radar_labels': json.dumps(radar_labels),
+        'radar_data': json.dumps(radar_data),
         'agrupacion': agrupacion,
     }
     return render(request, 'contabilidad_loslirios/analisis.html', context)
@@ -883,43 +959,84 @@ def analisis_movimientos(request):
     form = FormFiltroDashboardMovimientos(request.GET or None)
 
     # --- CALCULAR KPIs ---
-    gasto_total = queryset.aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total')
-    gasto_energia = queryset.filter(tipo='Energia').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total')
-    gasto_sueldos_personal = queryset.filter(tipo='Sueldos Personal').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total')
-    gasto_inversion = queryset.filter(tipo='Inversion').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total')
-    gasto_oficial_calculado = queryset.filter(origen='Oficial').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total')
+    gasto_total = queryset.aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total', Decimal('0.0'))
+    gasto_energia = queryset.filter(tipo='Energia').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total', Decimal('0.0'))
+    gasto_sueldos_personal = queryset.filter(tipo='Sueldos Personal').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total', Decimal('0.0'))
+    gasto_inversion = queryset.filter(tipo='Inversion').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total', Decimal('0.0'))
+    gasto_oficial_calculado = queryset.filter(origen='Oficial').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total', Decimal('0.0'))
+    gasto_no_oficial_calculado = queryset.filter(origen='No Oficial').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total', Decimal('0.0'))
 
+    # Calcular porcentajes
+    porcentaje_oficial = (gasto_oficial_calculado / gasto_total * 100) if gasto_total > 0 else 0
+    porcentaje_no_oficial = (gasto_no_oficial_calculado / gasto_total * 100) if gasto_total > 0 else 0
 
     kpis = {
-        'gasto_oficial': queryset.filter(origen='Oficial').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total'),
-        'gasto_no_oficial': queryset.filter(origen='No Oficial').aggregate(total=Coalesce(Sum('monto'), Decimal('0.0'))).get('total'),
+        'gasto_oficial': gasto_oficial_calculado,
+        'gasto_no_oficial': gasto_no_oficial_calculado,
         'gasto_total': gasto_total,
+        'porcentaje_oficial': porcentaje_oficial,
+        'porcentaje_no_oficial': porcentaje_no_oficial,
         'porcentaje_energia': (gasto_energia / gasto_total * 100) if gasto_total > 0 else 0,
         'porcentaje_sueldos_personal': (gasto_sueldos_personal / gasto_total * 100) if gasto_total > 0 else 0,
         'porcentaje_inversion': (gasto_inversion / gasto_total * 100) if gasto_total > 0 else 0,
         'iva': gasto_oficial_calculado * Decimal('0.21'),
     }
 
-    # --- DATOS PARA GRÁFICOS (excepto el de líneas) ---
+    # --- DATOS PARA GRÁFICOS ---
     # Gráfico de Barras: Top 5 Clasificaciones
-    top5_clasificaciones = queryset.values('clasificacion').annotate(total_monto=Sum('monto')).order_by('-total_monto')[:5]
+    top5_clasificaciones = list(queryset.values('clasificacion').annotate(
+        total_monto=Sum('monto')
+    ).order_by('-total_monto')[:5])
+    
     top5_bar_chart_labels = [g['clasificacion'] for g in top5_clasificaciones]
     top5_bar_chart_data = [float(g['total_monto']) for g in top5_clasificaciones]
     
     # Gráfico de Torta: Distribución de Gastos por Finca
-    gastos_por_finca = queryset.values('finca').annotate(total_monto=Sum('monto')).order_by('-total_monto')
+    gastos_por_finca = list(queryset.values('finca').annotate(
+        total_monto=Sum('monto')
+    ).order_by('-total_monto'))
+    
     pie_chart_labels = [g['finca'] for g in gastos_por_finca]
     pie_chart_data = [float(g['total_monto']) for g in gastos_por_finca]
 
     # Gráfico de Barras: Gastos Totales por Tipo
-    gastos_por_tipo = queryset.values('tipo').annotate(total_monto=Sum('monto')).order_by('-total_monto')
+    gastos_por_tipo = list(queryset.values('tipo').annotate(
+        total_monto=Sum('monto')
+    ).order_by('-total_monto'))
+    
     bar_chart_labels = [g['tipo'] for g in gastos_por_tipo]
     bar_chart_data = [float(g['total_monto']) for g in gastos_por_tipo]
+
+    # Simular datos de alertas (puedes mejorarlo después)
+    alertas = {
+        'aumentos_significativos': [
+            # {'tipo': 'Energía', 'aumento': 15.5},
+            # {'tipo': 'Combustibles', 'aumento': 8.2}
+        ]
+    }
+    
+    estacionalidad = {
+        'mes_pico': 'Enero',
+        'monto_pico': gasto_total * Decimal('1.2'),
+        'mes_bajo': 'Julio',
+        'monto_bajo': gasto_total * Decimal('0.8')
+    }
+
+    # Debug: Imprimir datos para verificar
+    print("DEBUG - Datos de gráficos:")
+    print(f"Top5 labels: {top5_bar_chart_labels}")
+    print(f"Top5 data: {top5_bar_chart_data}")
+    print(f"Pie labels: {pie_chart_labels}")
+    print(f"Pie data: {pie_chart_data}")
+    print(f"Bar labels: {bar_chart_labels}")
+    print(f"Bar data: {bar_chart_data}")
 
     # --- CONTEXTO ---
     context = {
         'form': form,
         'kpis': kpis,
+        'alertas': alertas,
+        'estacionalidad': estacionalidad,
         'top5_bar_chart_labels': json.dumps(top5_bar_chart_labels),
         'top5_bar_chart_data': json.dumps(top5_bar_chart_data),
         'pie_chart_labels': json.dumps(pie_chart_labels),
@@ -928,6 +1045,7 @@ def analisis_movimientos(request):
         'bar_chart_data': json.dumps(bar_chart_data),          
     }
     return render(request, 'contabilidad_loslirios/visualizacion/analisis_movimientos.html', context)
+
 #Logic for line_chart_data_api
 def _get_movimientos_filtrados_queryset(request):
     """Función auxiliar para obtener el queryset de movimientos filtrado."""
@@ -1213,3 +1331,466 @@ def sueldos_flujo_anual(request):
         'meses': meses_nombre_corto,
     }
     return render(request, 'contabilidad_loslirios/visualizacion/sueldos_flujo_anual.html', context)
+
+
+
+# === EDITAR/ELIMINAR MOVIMIENTOS FINANCIEROS ===
+@login_required
+@permission_required('contabilidad_loslirios.can_add_movimientos', raise_exception=True)
+def editar_movimiento(request, id):
+    # CORREGIDO: usar id_movimiento en lugar de id
+    movimiento = get_object_or_404(MovimientoFinanciero, id_movimiento=id)
+    
+    if request.method == 'POST':
+        formulario = FormMovimientoFinanciero(request.POST, instance=movimiento)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, f'Movimiento financiero actualizado exitosamente.')
+            return redirect('consultar_movimiento')
+    else:
+        formulario = FormMovimientoFinanciero(instance=movimiento)
+    
+    context = {
+        'formulario': formulario,
+        'movimiento': movimiento,
+        'modo': 'editar'
+    }
+    return render(request, 'contabilidad_loslirios/administracion/cargar_movimiento.html', context)
+
+@login_required
+@permission_required('contabilidad_loslirios.can_add_movimientos', raise_exception=True)
+def eliminar_movimiento(request, id):
+    # CORREGIDO: usar id_movimiento en lugar de id
+    movimiento = get_object_or_404(MovimientoFinanciero, id_movimiento=id)
+    
+    if request.method == 'POST':
+        descripcion = f"{movimiento.fecha.strftime('%d/%m/%Y')} - {movimiento.tipo} - ${movimiento.monto:.2f}"
+        movimiento.delete()
+        messages.success(request, f'Movimiento "{descripcion}" eliminado exitosamente.')
+        return redirect('consultar_movimiento')
+    
+    context = {'movimiento': movimiento}
+    return render(request, 'contabilidad_loslirios/administracion/confirmar_eliminar_movimiento.html', context)
+
+# === EDITAR/ELIMINAR INGRESOS FINANCIEROS ===
+@login_required
+@permission_required('contabilidad_loslirios.can_add_ingresos', raise_exception=True)
+def editar_ingreso(request, id):
+    # CORREGIDO: usar id_ingreso en lugar de id
+    ingreso = get_object_or_404(IngresoFinanciero, id_ingreso=id)
+    
+    if request.method == 'POST':
+        formulario = FormIngresoFinanciero(request.POST, instance=ingreso)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, f'Ingreso actualizado exitosamente.')
+            return redirect('consultar_ingresos')
+    else:
+        formulario = FormIngresoFinanciero(instance=ingreso)
+    
+    context = {
+        'formulario': formulario,
+        'ingreso': ingreso,
+        'modo': 'editar'
+    }
+    return render(request, 'contabilidad_loslirios/administracion/cargar_ingresos.html', context)
+
+@login_required
+@permission_required('contabilidad_loslirios.can_add_ingresos', raise_exception=True)
+def eliminar_ingreso(request, id):
+    # CORREGIDO: usar id_ingreso en lugar de id
+    ingreso = get_object_or_404(IngresoFinanciero, id_ingreso=id)
+    
+    if request.method == 'POST':
+        descripcion = f"{ingreso.comprador} - {ingreso.fecha.strftime('%d/%m/%Y')} - ${ingreso.monto:.2f}"
+        ingreso.delete()
+        messages.success(request, f'Ingreso "{descripcion}" eliminado exitosamente.')
+        return redirect('consultar_ingresos')
+    
+    context = {'ingreso': ingreso}
+    return render(request, 'contabilidad_loslirios/administracion/confirmar_eliminar_ingreso.html', context)
+
+# === EDITAR/ELIMINAR JORNALES ===
+@login_required
+@permission_required('contabilidad_loslirios.can_add_jornales', raise_exception=True)
+def editar_jornal(request, id):
+    # CORREGIDO: usar id_registro en lugar de id
+    jornal = get_object_or_404(registro_trabajo, id_registro=id)
+    
+    if request.method == 'POST':
+        formulario = FormRegistroTrabajo(request.POST, instance=jornal)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, f'Jornal actualizado exitosamente.')
+            return redirect('consultar_jornal')
+    else:
+        formulario = FormRegistroTrabajo(instance=jornal)
+    
+    context = {
+        'formulario': formulario,
+        'jornal': jornal,
+        'modo': 'editar'
+    }
+    return render(request, 'contabilidad_loslirios/produccion/cargar_jornal.html', context)
+
+@login_required
+@permission_required('contabilidad_loslirios.can_add_jornales', raise_exception=True)
+def eliminar_jornal(request, id):
+    # CORREGIDO: usar id_registro en lugar de id
+    jornal = get_object_or_404(registro_trabajo, id_registro=id)
+    
+    if request.method == 'POST':
+        descripcion = f"{jornal.nombre_trabajador} - {jornal.fecha.strftime('%d/%m/%Y')} - {jornal.tarea}"
+        jornal.delete()
+        messages.success(request, f'Jornal "{descripcion}" eliminado exitosamente.')
+        return redirect('consultar_jornal')
+    
+    context = {'jornal': jornal}
+    return render(request, 'contabilidad_loslirios/produccion/confirmar_eliminar_jornal.html', context)
+
+# === EDITAR/ELIMINAR REGISTROS DE RIEGO ===
+@login_required
+@permission_required('contabilidad_loslirios.can_add_riego', raise_exception=True)
+def editar_riego(request, id):
+    # CORREGIDO: usar id_riego en lugar de id
+    riego = get_object_or_404(RegistroRiego, id_riego=id)
+    
+    if request.method == 'POST':
+        formulario = FormRegistroRiego(request.POST, instance=riego)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, f'Registro de riego actualizado exitosamente.')
+            return redirect('consultar_riego')
+    else:
+        formulario = FormRegistroRiego(instance=riego)
+    
+    context = {
+        'form': formulario,
+        'riego': riego,
+        'modo': 'editar'
+    }
+    return render(request, 'contabilidad_loslirios/produccion/cargar_riego.html', context)
+
+@login_required
+@permission_required('contabilidad_loslirios.can_add_riego', raise_exception=True)
+def eliminar_riego(request, id):
+    # CORREGIDO: usar id_riego en lugar de id
+    riego = get_object_or_404(RegistroRiego, id_riego=id)
+    
+    if request.method == 'POST':
+        descripcion = f"{riego.parral} - {riego.inicio.strftime('%d/%m/%Y %H:%M')}"
+        riego.delete()
+        messages.success(request, f'Registro de riego "{descripcion}" eliminado exitosamente.')
+        return redirect('consultar_riego')
+    
+    context = {'riego': riego}
+    return render(request, 'contabilidad_loslirios/produccion/confirmar_eliminar_riego.html', context)
+
+# === EDITAR/ELIMINAR REGISTROS DE COSECHA ===
+@login_required
+@permission_required('contabilidad_loslirios.add_registrocosecha', raise_exception=True)
+def editar_cosecha(request, id):
+    cosecha = get_object_or_404(RegistroCosecha, id=id)
+    
+    if request.method == 'POST':
+        formulario = RegistroCosechaForm(request.POST, instance=cosecha)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, f'Registro de cosecha actualizado exitosamente.')
+            return redirect('consultar_cosecha')
+    else:
+        formulario = RegistroCosechaForm(instance=cosecha)
+    
+    # Obtener opciones para datalists (igual que en cargar_cosecha)
+    fincas = list(set([choice[0] for choice in FINCA_CHOICES] + 
+                     list(RegistroCosecha.objects.values_list('finca', flat=True).distinct())))
+    compradores = list(set([choice[0] for choice in COMPRADOR_CHOICES] + 
+                          list(RegistroCosecha.objects.values_list('comprador', flat=True).distinct())))
+    cultivos = list(set([choice[0] for choice in CULTIVO_CHOICES] + 
+                       list(RegistroCosecha.objects.values_list('cultivo', flat=True).distinct())))
+    variedades = list(set([choice[0] for choice in VARIEDAD_CHOICES] + 
+                         list(RegistroCosecha.objects.values_list('variedad', flat=True).distinct())))
+    
+    context = {
+        'form': formulario,
+        'cosecha': cosecha,
+        'modo': 'editar',
+        'fincas': fincas,
+        'compradores': compradores,
+        'cultivos': cultivos,
+        'variedades': variedades,
+    }
+    return render(request, 'contabilidad_loslirios/produccion/cargar_cosecha.html', context)
+
+@login_required
+@permission_required('contabilidad_loslirios.add_registrocosecha', raise_exception=True)
+def eliminar_cosecha(request, id):
+    cosecha = get_object_or_404(RegistroCosecha, id=id)
+    
+    if request.method == 'POST':
+        descripcion = f"{cosecha.variedad} - {cosecha.fecha.strftime('%d/%m/%Y')}"
+        cosecha.delete()
+        messages.success(request, f'Registro de cosecha "{descripcion}" eliminado exitosamente.')
+        return redirect('consultar_cosecha')
+    
+    context = {'cosecha': cosecha}
+    return render(request, 'contabilidad_loslirios/produccion/confirmar_eliminar_cosecha.html', context)
+
+# === BÚSQUEDA AVANZADA ===
+@login_required
+@permission_required('contabilidad_loslirios.can_view_movimientos', raise_exception=True)
+def busqueda_avanzada_movimientos(request):
+    movimientos = MovimientoFinanciero.objects.all()
+    
+    # Filtros avanzados
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+    descripcion = request.GET.get('descripcion')
+    monto_min = request.GET.get('monto_min')
+    monto_max = request.GET.get('monto_max')
+    tipo = request.GET.get('tipo')
+    
+    if fecha_desde:
+        movimientos = movimientos.filter(fecha__gte=fecha_desde)
+    if fecha_hasta:
+        movimientos = movimientos.filter(fecha__lte=fecha_hasta)
+    if descripcion:
+        movimientos = movimientos.filter(descripcion__icontains=descripcion)
+    if monto_min:
+        movimientos = movimientos.filter(monto__gte=monto_min)
+    if monto_max:
+        movimientos = movimientos.filter(monto__lte=monto_max)
+    if tipo:
+        movimientos = movimientos.filter(tipo=tipo)
+    
+    # Ordenamiento
+    orden = request.GET.get('orden', '-fecha')
+    movimientos = movimientos.order_by(orden)
+    
+    # Paginación
+    from django.core.paginator import Paginator
+    paginator = Paginator(movimientos, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'movimientos': page_obj,
+        'filtros': {
+            'fecha_desde': fecha_desde,
+            'fecha_hasta': fecha_hasta,
+            'descripcion': descripcion,
+            'monto_min': monto_min,
+            'monto_max': monto_max,
+            'tipo': tipo,
+        },
+        'total_registros': movimientos.count(),
+        'total_monto': movimientos.aggregate(total=Sum('monto'))['total'] or 0,
+    }
+    
+    return render(request, 'contabilidad_loslirios/administracion/busqueda_avanzada_movimientos.html', context)
+
+# === EXPORTAR A EXCEL ===
+@login_required
+@permission_required('contabilidad_loslirios.can_export_movimientos', raise_exception=True)
+def exportar_excel_movimientos(request):
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from django.http import HttpResponse
+    from datetime import datetime
+    
+    # Crear workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Movimientos Financieros"
+    
+    # Aplicar mismos filtros que en la búsqueda
+    movimientos = MovimientoFinanciero.objects.all()
+    
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+    descripcion = request.GET.get('descripcion')
+    tipo = request.GET.get('tipo')
+    
+    if fecha_desde:
+        movimientos = movimientos.filter(fecha__gte=fecha_desde)
+    if fecha_hasta:
+        movimientos = movimientos.filter(fecha__lte=fecha_hasta)
+    if descripcion:
+        movimientos = movimientos.filter(descripcion__icontains=descripcion)
+    if tipo:
+        movimientos = movimientos.filter(tipo=tipo)
+    
+    movimientos = movimientos.order_by('-fecha')
+    
+    # Configurar encabezados
+    headers = ['Fecha', 'Descripción', 'Tipo', 'Monto', 'Forma de Pago', 'Número Cheque', 'Vencimiento Cheque']
+    
+    # Estilo para encabezados
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Escribir encabezados
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+    
+    # Escribir datos
+    for row, movimiento in enumerate(movimientos, 2):
+        ws.cell(row=row, column=1, value=movimiento.fecha.strftime('%d/%m/%Y'))
+        ws.cell(row=row, column=2, value=movimiento.descripcion)
+        ws.cell(row=row, column=3, value=movimiento.tipo)
+        ws.cell(row=row, column=4, value=float(movimiento.monto))
+        ws.cell(row=row, column=5, value=movimiento.forma_pago)
+        ws.cell(row=row, column=6, value=movimiento.numero_cheque or '')
+        
+        if movimiento.vencimiento_cheque:
+            ws.cell(row=row, column=7, value=movimiento.vencimiento_cheque.strftime('%d/%m/%Y'))
+    
+    # Ajustar ancho de columnas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Agregar totales al final
+    total_row = len(movimientos) + 3
+    ws.cell(row=total_row, column=3, value='Total')
+    ws.cell(row=total_row, column=4, value=f'=SUM(D2:D{total_row-1})').font = Font(bold=True)
+    
+    # Proteger la hoja
+    ws.protect("tu_contraseña", sheet=True)
+    
+    # Desbloquear celdas específicas
+    for row in range(2, total_row):
+        for col in [1, 2, 3, 5, 6, 7]:  # Desbloquear columnas A, B, C, E, F, G
+            ws.cell(row=row, column=col).protection = None
+    
+    # Forzar descarga del archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="movimientos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+    
+    # Guardar el archivo en la respuesta
+    wb.save(response)
+    return response
+
+# Logic for Dashboard KPIs API
+@login_required
+def dashboard_kpis_api(request):
+    """API para obtener KPIs del dashboard en tiempo real"""
+    from datetime import datetime, timedelta
+    from django.db.models import Sum
+    import traceback
+    
+    try:
+        hoy = datetime.now().date()
+        primer_dia_mes = hoy.replace(day=1)
+        ultimo_dia_mes_anterior = primer_dia_mes - timedelta(days=1)
+        primer_dia_mes_anterior = ultimo_dia_mes_anterior.replace(day=1)
+        
+        print(f"DEBUG - Consultando datos desde {primer_dia_mes} hasta {hoy}")  # DEBUG
+        
+        # GASTOS DEL MES ACTUAL (MOVIMIENTOS FINANCIEROS)
+        gastos_mes = MovimientoFinanciero.objects.filter(
+            fecha__gte=primer_dia_mes,
+            fecha__lte=hoy
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        # INGRESOS DEL MES ACTUAL (INGRESOS FINANCIEROS)
+        ingresos_mes = IngresoFinanciero.objects.filter(
+            fecha__gte=primer_dia_mes,
+            fecha__lte=hoy
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        # CHEQUES DEL MES ACTUAL
+        cheques_mes_queryset = IngresoFinanciero.objects.filter(
+            fecha__gte=primer_dia_mes,
+            fecha__lte=hoy,
+            forma_pago__in=['Cheque', 'Echeque']
+        )
+        
+        # TRABAJADORES DEL MES ACTUAL
+        trabajadores_mes = registro_trabajo.objects.filter(
+            fecha__gte=primer_dia_mes,
+            fecha__lte=hoy
+        ).values('nombre_trabajador').distinct().count()
+        
+        # TRABAJADORES DE LA SEMANA ACTUAL
+        inicio_semana = hoy - timedelta(days=hoy.weekday())
+        trabajadores_semana = registro_trabajo.objects.filter(
+            fecha__gte=inicio_semana,
+            fecha__lte=hoy
+        ).values('nombre_trabajador').distinct().count()
+        
+        # GASTOS DEL MES ANTERIOR PARA CALCULAR VARIACIÓN
+        gastos_mes_anterior = MovimientoFinanciero.objects.filter(
+            fecha__gte=primer_dia_mes_anterior,
+            fecha__lte=ultimo_dia_mes_anterior
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        # INGRESOS DEL MES ANTERIOR PARA CALCULAR VARIACIÓN
+        ingresos_mes_anterior = IngresoFinanciero.objects.filter(
+            fecha__gte=primer_dia_mes_anterior,
+            fecha__lte=ultimo_dia_mes_anterior
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        # CALCULAR VARIACIONES
+        variacion_gastos = 0
+        if gastos_mes_anterior > 0:
+            variacion_gastos = ((gastos_mes - gastos_mes_anterior) / gastos_mes_anterior * 100)
+        
+        variacion_ingresos = 0
+        if ingresos_mes_anterior > 0:
+            variacion_ingresos = ((ingresos_mes - ingresos_mes_anterior) / ingresos_mes_anterior * 100)
+        
+        # SPARKLINES (ÚLTIMOS 5 DÍAS) - CORREGIDO
+        sparkline_gastos = []
+        sparkline_ingresos = []
+        
+        if gastos_mes > 0 or ingresos_mes > 0:
+            for i in range(4, -1, -1):
+                fecha = hoy - timedelta(days=i)
+                gasto_dia = MovimientoFinanciero.objects.filter(fecha=fecha).aggregate(total=Sum('monto'))['total'] or 0
+                ingreso_dia = IngresoFinanciero.objects.filter(fecha=fecha).aggregate(total=Sum('monto'))['total'] or 0
+                sparkline_gastos.append(float(gasto_dia))
+                sparkline_ingresos.append(float(ingreso_dia))
+        
+        # DEBUG: Mostrar datos calculados
+        print(f"DEBUG - Gastos mes actual: {gastos_mes}")
+        print(f"DEBUG - Ingresos mes actual: {ingresos_mes}")
+        print(f"DEBUG - Trabajadores mes: {trabajadores_mes}")
+        print(f"DEBUG - Cheques mes: {cheques_mes_queryset.count()}")
+        
+        # PREPARAR RESPUESTA
+        data = {
+            'gasto_total_mes': float(gastos_mes),
+            'ingresos_mes': float(ingresos_mes),
+            'saldo_disponible': float(ingresos_mes - gastos_mes),
+            'cheques_mes': cheques_mes_queryset.count(),
+            'monto_cheques_mes': float(cheques_mes_queryset.aggregate(total=Sum('monto'))['total'] or 0),
+            'trabajadores_mes': trabajadores_mes,
+            'trabajadores_semana': trabajadores_semana,
+            'variacion_gastos': float(variacion_gastos),
+            'variacion_ingresos': float(variacion_ingresos),
+            'sparkline_gastos': sparkline_gastos,
+            'sparkline_ingresos': sparkline_ingresos,
+            'tiene_datos': gastos_mes > 0 or ingresos_mes > 0 or trabajadores_mes > 0,
+        }
+        
+        print(f"DEBUG - Datos finales enviados: {data}")
+        
+        return JsonResponse(data)
+        
+    except Exception as e:
+        print(f"ERROR en dashboard_kpis_api: {str(e)}")
+        print(traceback.format_exc())
+        return JsonResponse({'error': str(e)}, status=500)
