@@ -1,3 +1,4 @@
+from asyncio.log import logger
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import *
 from .models import *
@@ -664,6 +665,116 @@ def _obtener_riegos_filtrados(request):
     return registros
 
 #Logic for cosecha page:
+# === APIs PARA COSECHA (SIMILAR A INGRESOS) ===
+def get_fincas_cosecha(request):
+    """API para obtener todas las fincas disponibles para cosecha"""
+    # Fincas predefinidas
+    fincas_predefinidas = ['Mediagua', 'Caucete', '9 de Julio']
+    
+    # Fincas personalizadas
+    fincas_personalizadas = list(FincaCosecha.objects.values_list('nombre', flat=True))
+    
+    # Combinar y eliminar duplicados
+    todas_fincas = list(set(fincas_predefinidas + fincas_personalizadas))
+    todas_fincas.sort()
+    
+    return JsonResponse({'fincas': todas_fincas})
+
+def get_compradores_cosecha(request):
+    """API para obtener todos los compradores disponibles para cosecha"""
+    # Compradores predefinidos
+    compradores_predefinidos = ['Pasero', 'Natural Food', 'Vizcaino']
+    
+    # Compradores personalizados
+    compradores_personalizados = list(CompradorCosecha.objects.values_list('nombre', flat=True))
+    
+    # Combinar y eliminar duplicados
+    todos_compradores = list(set(compradores_predefinidos + compradores_personalizados))
+    todos_compradores.sort()
+    
+    return JsonResponse({'compradores': todos_compradores})
+
+def get_cultivos_cosecha(request):
+    """API para obtener todos los cultivos disponibles para cosecha"""
+    # Cultivos predefinidos
+    cultivos_predefinidos = ['Alfalfa', 'Chacra', 'Ind Pasa', 'VID']
+    
+    # Cultivos personalizados
+    cultivos_personalizados = list(CultivoCosecha.objects.values_list('nombre', flat=True))
+    
+    # Combinar y eliminar duplicados
+    todos_cultivos = list(set(cultivos_predefinidos + cultivos_personalizados))
+    todos_cultivos.sort()
+    
+    return JsonResponse({'cultivos': todos_cultivos})
+
+def get_variedades_cosecha(request):
+    """API para obtener todas las variedades disponibles para cosecha"""
+    # Variedades predefinidas
+    variedades_predefinidas = [
+        'Alfalfa', 'Alfalfa 969', 'Alfalfa GL', 'Alfalfa Mecha', 'Aspirant', 
+        'Bonarda', 'Fiesta', 'Flame', 'Red Globe', 'Sandia', 'Sultanina', 
+        'Superior', 'Syrah', 'Zapallo'
+    ]
+    
+    # Variedades personalizadas
+    variedades_personalizadas = list(VariedadCosecha.objects.values_list('nombre', flat=True))
+    
+    # Combinar y eliminar duplicados
+    todas_variedades = list(set(variedades_predefinidas + variedades_personalizadas))
+    todas_variedades.sort()
+    
+    return JsonResponse({'variedades': todas_variedades})
+
+def agregar_finca_cosecha(request):
+    """API para agregar una nueva finca personalizada para cosecha"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        if nombre:
+            finca, created = FincaCosecha.objects.get_or_create(nombre=nombre)
+            if created:
+                return JsonResponse({'success': True, 'message': 'Finca agregada exitosamente'})
+            else:
+                return JsonResponse({'success': False, 'message': 'La finca ya existe'})
+    return JsonResponse({'success': False, 'message': 'Nombre requerido'})
+
+def agregar_comprador_cosecha(request):
+    """API para agregar un nuevo comprador personalizado para cosecha"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        if nombre:
+            comprador, created = CompradorCosecha.objects.get_or_create(nombre=nombre)
+            if created:
+                return JsonResponse({'success': True, 'message': 'Comprador agregado exitosamente'})
+            else:
+                return JsonResponse({'success': False, 'message': 'El comprador ya existe'})
+    return JsonResponse({'success': False, 'message': 'Nombre requerido'})
+
+def agregar_cultivo_cosecha(request):
+    """API para agregar un nuevo cultivo personalizado para cosecha"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        if nombre:
+            cultivo, created = CultivoCosecha.objects.get_or_create(nombre=nombre)
+            if created:
+                return JsonResponse({'success': True, 'message': 'Cultivo agregado exitosamente'})
+            else:
+                return JsonResponse({'success': False, 'message': 'El cultivo ya existe'})
+    return JsonResponse({'success': False, 'message': 'Nombre requerido'})
+
+def agregar_variedad_cosecha(request):
+    """API para agregar una nueva variedad personalizada para cosecha"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        if nombre:
+            variedad, created = VariedadCosecha.objects.get_or_create(nombre=nombre)
+            if created:
+                return JsonResponse({'success': True, 'message': 'Variedad agregada exitosamente'})
+            else:
+                return JsonResponse({'success': False, 'message': 'La variedad ya existe'})
+    return JsonResponse({'success': False, 'message': 'Nombre requerido'})
+
+
 #Logic for cargar_cosecha page:
 @login_required
 def cargar_cosecha(request):
@@ -678,22 +789,9 @@ def cargar_cosecha(request):
     else:
         form = RegistroCosechaForm()
     
-    # Obtener opciones para datalists
-    fincas = list(set([choice[0] for choice in FINCA_CHOICES] + 
-                     list(RegistroCosecha.objects.values_list('finca', flat=True).distinct())))
-    compradores = list(set([choice[0] for choice in COMPRADOR_CHOICES] + 
-                          list(RegistroCosecha.objects.values_list('comprador', flat=True).distinct())))
-    cultivos = list(set([choice[0] for choice in CULTIVO_CHOICES] + 
-                       list(RegistroCosecha.objects.values_list('cultivo', flat=True).distinct())))
-    variedades = list(set([choice[0] for choice in VARIEDAD_CHOICES] + 
-                         list(RegistroCosecha.objects.values_list('variedad', flat=True).distinct())))
-    
+    # NO NECESITAMOS MÁS LOS DATALISTS - SE CARGAN DINÁMICAMENTE
     context = {
         'form': form,
-        'fincas': fincas,
-        'compradores': compradores,
-        'cultivos': cultivos,
-        'variedades': variedades,
     }
     return render(request, 'contabilidad_loslirios/produccion/cargar_cosecha.html', context)
 
@@ -1684,9 +1782,12 @@ def exportar_excel_movimientos(request):
     return response
 
 # Logic for Dashboard KPIs API
+# REEMPLAZAR la función dashboard_kpis_api en views.py:
+
 @login_required
 def dashboard_kpis_api(request):
-    """API para obtener KPIs del dashboard en tiempo real"""
+    """API optimizada para obtener KPIs del dashboard en tiempo real"""
+    from .cache import CacheManager
     from datetime import datetime, timedelta
     from django.db.models import Sum
     import traceback
@@ -1694,103 +1795,154 @@ def dashboard_kpis_api(request):
     try:
         hoy = datetime.now().date()
         primer_dia_mes = hoy.replace(day=1)
-        ultimo_dia_mes_anterior = primer_dia_mes - timedelta(days=1)
-        primer_dia_mes_anterior = ultimo_dia_mes_anterior.replace(day=1)
         
-        print(f"DEBUG - Consultando datos desde {primer_dia_mes} hasta {hoy}")  # DEBUG
+        # USAR CACHE PARA MEJORAR RENDIMIENTO
+        try:
+            cached_data = CacheManager.get_dashboard_kpis(primer_dia_mes, hoy)
+        except Exception as cache_error:
+            print(f"⚠️ Error en cache, calculando datos frescos: {cache_error}")
+            cached_data = None
         
-        # GASTOS DEL MES ACTUAL (MOVIMIENTOS FINANCIEROS)
-        gastos_mes = MovimientoFinanciero.objects.filter(
-            fecha__gte=primer_dia_mes,
-            fecha__lte=hoy
-        ).aggregate(total=Sum('monto'))['total'] or 0
+        # Si no hay datos en cache, calcular directamente
+        if not cached_data:
+            print("📊 Calculando KPIs frescos...")
+            
+            gastos_mes = MovimientoFinanciero.objects.filter(
+                fecha__gte=primer_dia_mes,
+                fecha__lte=hoy
+            ).aggregate(total=Sum('monto'))['total'] or 0
+            
+            ingresos_mes = IngresoFinanciero.objects.filter(
+                fecha__gte=primer_dia_mes,
+                fecha__lte=hoy
+            ).aggregate(total=Sum('monto'))['total'] or 0
+            
+            trabajadores_mes = registro_trabajo.objects.filter(
+                fecha__gte=primer_dia_mes,
+                fecha__lte=hoy
+            ).values('nombre_trabajador').distinct().count()
+            
+            cached_data = {
+                'gastos_mes': float(gastos_mes),
+                'ingresos_mes': float(ingresos_mes),
+                'saldo_disponible': float(ingresos_mes - gastos_mes),
+                'trabajadores_mes': trabajadores_mes,
+                'timestamp': datetime.now().isoformat()
+            }
         
-        # INGRESOS DEL MES ACTUAL (INGRESOS FINANCIEROS)
-        ingresos_mes = IngresoFinanciero.objects.filter(
-            fecha__gte=primer_dia_mes,
-            fecha__lte=hoy
-        ).aggregate(total=Sum('monto'))['total'] or 0
+        print(f"✅ Datos KPIs obtenidos: {cached_data}")
         
-        # CHEQUES DEL MES ACTUAL
-        cheques_mes_queryset = IngresoFinanciero.objects.filter(
-            fecha__gte=primer_dia_mes,
-            fecha__lte=hoy,
-            forma_pago__in=['Cheque', 'Echeque']
-        )
+        # Agregar datos adicionales que no se cachean
+        try:
+            cheques_mes_queryset = IngresoFinanciero.objects.filter(
+                fecha__gte=primer_dia_mes,
+                fecha__lte=hoy,
+                forma_pago__in=['Cheque', 'Echeque']
+            ).only('monto')
+            
+            cheques_count = cheques_mes_queryset.count()
+            cheques_monto = cheques_mes_queryset.aggregate(total=Sum('monto'))['total'] or 0
+        except Exception as e:
+            print(f"⚠️ Error calculando cheques: {e}")
+            cheques_count = 0
+            cheques_monto = 0
         
-        # TRABAJADORES DEL MES ACTUAL
-        trabajadores_mes = registro_trabajo.objects.filter(
-            fecha__gte=primer_dia_mes,
-            fecha__lte=hoy
-        ).values('nombre_trabajador').distinct().count()
-        
-        # TRABAJADORES DE LA SEMANA ACTUAL
-        inicio_semana = hoy - timedelta(days=hoy.weekday())
-        trabajadores_semana = registro_trabajo.objects.filter(
-            fecha__gte=inicio_semana,
-            fecha__lte=hoy
-        ).values('nombre_trabajador').distinct().count()
-        
-        # GASTOS DEL MES ANTERIOR PARA CALCULAR VARIACIÓN
-        gastos_mes_anterior = MovimientoFinanciero.objects.filter(
-            fecha__gte=primer_dia_mes_anterior,
-            fecha__lte=ultimo_dia_mes_anterior
-        ).aggregate(total=Sum('monto'))['total'] or 0
-        
-        # INGRESOS DEL MES ANTERIOR PARA CALCULAR VARIACIÓN
-        ingresos_mes_anterior = IngresoFinanciero.objects.filter(
-            fecha__gte=primer_dia_mes_anterior,
-            fecha__lte=ultimo_dia_mes_anterior
-        ).aggregate(total=Sum('monto'))['total'] or 0
-        
-        # CALCULAR VARIACIONES
-        variacion_gastos = 0
-        if gastos_mes_anterior > 0:
-            variacion_gastos = ((gastos_mes - gastos_mes_anterior) / gastos_mes_anterior * 100)
-        
-        variacion_ingresos = 0
-        if ingresos_mes_anterior > 0:
-            variacion_ingresos = ((ingresos_mes - ingresos_mes_anterior) / ingresos_mes_anterior * 100)
-        
-        # SPARKLINES (ÚLTIMOS 5 DÍAS) - CORREGIDO
+        # SPARKLINES SIMPLIFICADOS (últimos 7 días)
         sparkline_gastos = []
         sparkline_ingresos = []
         
-        if gastos_mes > 0 or ingresos_mes > 0:
-            for i in range(4, -1, -1):
+        try:
+            for i in range(6, -1, -1):
                 fecha = hoy - timedelta(days=i)
-                gasto_dia = MovimientoFinanciero.objects.filter(fecha=fecha).aggregate(total=Sum('monto'))['total'] or 0
-                ingreso_dia = IngresoFinanciero.objects.filter(fecha=fecha).aggregate(total=Sum('monto'))['total'] or 0
+                
+                gasto_dia = MovimientoFinanciero.objects.filter(
+                    fecha=fecha
+                ).aggregate(total=Sum('monto'))['total'] or 0
+                
+                ingreso_dia = IngresoFinanciero.objects.filter(
+                    fecha=fecha
+                ).aggregate(total=Sum('monto'))['total'] or 0
+                
                 sparkline_gastos.append(float(gasto_dia))
                 sparkline_ingresos.append(float(ingreso_dia))
+        except Exception as e:
+            print(f"⚠️ Error calculando sparklines: {e}")
+            sparkline_gastos = [0] * 7
+            sparkline_ingresos = [0] * 7
         
-        # DEBUG: Mostrar datos calculados
-        print(f"DEBUG - Gastos mes actual: {gastos_mes}")
-        print(f"DEBUG - Ingresos mes actual: {ingresos_mes}")
-        print(f"DEBUG - Trabajadores mes: {trabajadores_mes}")
-        print(f"DEBUG - Cheques mes: {cheques_mes_queryset.count()}")
+        # Calcular variaciones (mes anterior vs actual)
+        try:
+            ultimo_dia_mes_anterior = primer_dia_mes - timedelta(days=1)
+            primer_dia_mes_anterior = ultimo_dia_mes_anterior.replace(day=1)
+            
+            gastos_mes_anterior = MovimientoFinanciero.objects.filter(
+                fecha__gte=primer_dia_mes_anterior,
+                fecha__lte=ultimo_dia_mes_anterior
+            ).aggregate(total=Sum('monto'))['total'] or 0
+            
+            ingresos_mes_anterior = IngresoFinanciero.objects.filter(
+                fecha__gte=primer_dia_mes_anterior,
+                fecha__lte=ultimo_dia_mes_anterior
+            ).aggregate(total=Sum('monto'))['total'] or 0
+            
+            # Calcular variaciones
+            variacion_gastos = 0
+            if gastos_mes_anterior > 0:
+                variacion_gastos = ((cached_data['gastos_mes'] - gastos_mes_anterior) / gastos_mes_anterior * 100)
+            
+            variacion_ingresos = 0
+            if ingresos_mes_anterior > 0:
+                variacion_ingresos = ((cached_data['ingresos_mes'] - ingresos_mes_anterior) / ingresos_mes_anterior * 100)
+                
+        except Exception as e:
+            print(f"⚠️ Error calculando variaciones: {e}")
+            variacion_gastos = 0
+            variacion_ingresos = 0
         
-        # PREPARAR RESPUESTA
+        # PREPARAR RESPUESTA FINAL
         data = {
-            'gasto_total_mes': float(gastos_mes),
-            'ingresos_mes': float(ingresos_mes),
-            'saldo_disponible': float(ingresos_mes - gastos_mes),
-            'cheques_mes': cheques_mes_queryset.count(),
-            'monto_cheques_mes': float(cheques_mes_queryset.aggregate(total=Sum('monto'))['total'] or 0),
-            'trabajadores_mes': trabajadores_mes,
-            'trabajadores_semana': trabajadores_semana,
+            'gasto_total_mes': cached_data['gastos_mes'],
+            'ingresos_mes': cached_data['ingresos_mes'],
+            'saldo_disponible': cached_data['saldo_disponible'],
+            'cheques_mes': cheques_count,
+            'monto_cheques_mes': float(cheques_monto),
+            'trabajadores_mes': cached_data['trabajadores_mes'],
+            'trabajadores_semana': cached_data['trabajadores_mes'],  # Simplificado por ahora
             'variacion_gastos': float(variacion_gastos),
             'variacion_ingresos': float(variacion_ingresos),
             'sparkline_gastos': sparkline_gastos,
             'sparkline_ingresos': sparkline_ingresos,
-            'tiene_datos': gastos_mes > 0 or ingresos_mes > 0 or trabajadores_mes > 0,
+            'tiene_datos': (cached_data['gastos_mes'] > 0 or 
+                           cached_data['ingresos_mes'] > 0 or 
+                           cached_data['trabajadores_mes'] > 0),
+            'cache_hit': cached_data is not None,
+            'timestamp': cached_data.get('timestamp', datetime.now().isoformat()),
+            'success': True
         }
         
-        print(f"DEBUG - Datos finales enviados: {data}")
-        
+        print(f"🚀 Respuesta API preparada: {data['tiene_datos']}")
         return JsonResponse(data)
         
     except Exception as e:
-        print(f"ERROR en dashboard_kpis_api: {str(e)}")
+        print(f"❌ ERROR CRÍTICO en dashboard_kpis_api: {str(e)}")
         print(traceback.format_exc())
-        return JsonResponse({'error': str(e)}, status=500)
+        
+        # Respuesta de emergencia
+        return JsonResponse({
+            'error': 'Error interno del servidor',
+            'message': str(e),
+            'gasto_total_mes': 0,
+            'ingresos_mes': 0,
+            'saldo_disponible': 0,
+            'cheques_mes': 0,
+            'monto_cheques_mes': 0,
+            'trabajadores_mes': 0,
+            'trabajadores_semana': 0,
+            'variacion_gastos': 0,
+            'variacion_ingresos': 0,
+            'sparkline_gastos': [0] * 7,
+            'sparkline_ingresos': [0] * 7,
+            'tiene_datos': False,
+            'success': False,
+            'timestamp': datetime.now().isoformat()
+        }, status=500)

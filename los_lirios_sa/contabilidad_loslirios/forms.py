@@ -220,19 +220,25 @@ class FormIngresoFinanciero(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Seleccione o escriba un comprador'
             }),
-            'forma_pago': forms.Select(attrs={'class': 'form-control'}),
+            'forma_pago': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'id_forma_pago'  # ID específico para el JavaScript
+            }),
             'forma': forms.Select(attrs={'class': 'form-control'}),
             'banco': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Nombre del banco'
+                'placeholder': 'Nombre del banco',
+                'id': 'id_banco'  # ID específico
             }),
             'numero_cheque': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Número de cheque'
+                'placeholder': 'Número de cheque',
+                'id': 'id_numero_cheque'  # ID específico
             }),
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
-                'class': 'form-control'
+                'class': 'form-control',
+                'id': 'id_fecha_pago'  # ID específico
             }),
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -245,12 +251,6 @@ class FormIngresoFinanciero(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Aplicar clases CSS a todos los campos
-        for field_name, field in self.fields.items():
-            if not hasattr(field.widget, 'attrs'):
-                field.widget.attrs = {}
-            field.widget.attrs.update({'class': 'form-control'})
-            
         # Hacer campos condicionales no requeridos inicialmente
         self.fields['banco'].required = False
         self.fields['numero_cheque'].required = False
@@ -584,27 +584,32 @@ class RegistroCosechaForm(forms.ModelForm):
             'origen': forms.Select(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
             }),
+            # CAMPOS DINÁMICOS - IGUAL QUE EN INGRESOS
             'finca': forms.TextInput(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'list': 'finca-list'
+                'placeholder': 'Seleccione o escriba una finca',
+                'id': 'id_finca'
             }),
             'destino': forms.Select(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
             }),
             'comprador': forms.TextInput(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'list': 'comprador-list'
+                'placeholder': 'Seleccione o escriba un comprador',
+                'id': 'id_comprador'
             }),
             'cultivo': forms.TextInput(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'list': 'cultivo-list'
+                'placeholder': 'Seleccione o escriba un cultivo',
+                'id': 'id_cultivo'
             }),
             'parral_potrero': forms.TextInput(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
             }),
             'variedad': forms.TextInput(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'list': 'variedad-list'
+                'placeholder': 'Seleccione o escriba una variedad',
+                'id': 'id_variedad'
             }),
             'remito': forms.TextInput(attrs={
                 'class': 'form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'

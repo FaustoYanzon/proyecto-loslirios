@@ -54,6 +54,15 @@ urlpatterns = [
     path('produccion/cosecha/exportar/csv/', views.exportar_cosecha_csv, name='exportar_cosecha_csv'),
     path('produccion/cosecha/editar/<int:id>/', views.editar_cosecha, name='editar_cosecha'),
     path('produccion/cosecha/eliminar/<int:id>/', views.eliminar_cosecha, name='eliminar_cosecha'),
+    # APIs para Cosecha
+    path('api/cosecha/get-fincas/', views.get_fincas_cosecha, name='get_fincas_cosecha'),
+    path('api/cosecha/get-compradores/', views.get_compradores_cosecha, name='get_compradores_cosecha'),
+    path('api/cosecha/get-cultivos/', views.get_cultivos_cosecha, name='get_cultivos_cosecha'),
+    path('api/cosecha/get-variedades/', views.get_variedades_cosecha, name='get_variedades_cosecha'),
+    path('api/cosecha/agregar-finca/', views.agregar_finca_cosecha, name='agregar_finca_cosecha'),
+    path('api/cosecha/agregar-comprador/', views.agregar_comprador_cosecha, name='agregar_comprador_cosecha'),
+    path('api/cosecha/agregar-cultivo/', views.agregar_cultivo_cosecha, name='agregar_cultivo_cosecha'),
+    path('api/cosecha/agregar-variedad/', views.agregar_variedad_cosecha, name='agregar_variedad_cosecha'),
 #URLs for Analisis
     path('analisis/', views.analisis, name='analisis'),
     path('visualizacion/analisis/movimientos/', views.analisis_movimientos, name='analisis_movimientos'),

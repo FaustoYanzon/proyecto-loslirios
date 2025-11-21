@@ -6,13 +6,13 @@
 {% endblock titulo %}
 
 {% block contenido %}
-    {# Mensajes #}
+    {# Mensajes de Django (Toastify-js los leerá y los mostrará) #}
     {% if messages %}
-        <div id="django-messages" style="display: none;">
+        <ul class="messages mb-4 hidden"> 
             {% for message in messages %}
-                <div data-level="{{ message.level_tag }}" data-message="{{ message }}"></div>
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
             {% endfor %}
-        </div>
+        </ul>
     {% endif %}
 
     <div class="flex items-center mb-6">
@@ -34,25 +34,37 @@
         <div class="flex items-center">
             <i class="fas fa-info-circle text-blue-600 mr-2"></i>
             <span class="text-blue-800 font-medium">
-                Editando registro del {{ cosecha.fecha|date:"d/m/Y" }} - {{ cosecha.variedad }} ({{ cosecha.finca }})
+                Editando cosecha de {{ cosecha.variedad }} del {{ cosecha.fecha|date:"d/m/Y" }} - {{ cosecha.kg_totales }} kg
             </span>
         </div>
     </div>
     {% endif %}
 
-    <form method="post" id="form-cosecha" class="bg-white p-8 rounded-lg shadow-md">
+    <form method="POST" class="bg-white p-8 rounded-lg shadow-md" id="cosecha-form">
         {% csrf_token %}
-        
+
+        {% if form.non_field_errors %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+                <strong class="font-bold">¡Error al guardar!</strong>
+                <span class="block sm:inline">Por favor, corrija los siguientes errores:</span>
+                <ul class="mt-2 list-disc list-inside">
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
         <!-- Información General -->
         <fieldset class="border border-gray-300 p-6 rounded-md mb-6">
             <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Información General</legend>
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
                 <div class="space-y-2">
                     <label for="{{ form.fecha.id_for_label }}" class="block text-gray-700 text-sm font-bold">Fecha:</label>
                     <input type="date" 
                            name="{{ form.fecha.name }}" 
                            id="{{ form.fecha.id_for_label }}"
-                           value="{{ form.fecha.value|date:'Y-m-d'|default:'' }}"
+                           value="{{ form.fecha.value|default:'' }}"
                            class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
                            required>
                     {% if form.fecha.errors %}
@@ -67,11 +79,8 @@
                             class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
                             required>
                         <option value="">Seleccione origen</option>
-                        {% for value, label in form.origen.field.choices %}
-                            <option value="{{ value }}" {% if form.origen.value == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
+                        <option value="Terceros" {% if form.origen.value == 'Terceros' %}selected{% endif %}>Terceros</option>
+                        <option value="Los Lirios" {% if form.origen.value == 'Los Lirios' %}selected{% endif %}>Los Lirios</option>
                     </select>
                     {% if form.origen.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.origen.errors|first }}</p>
@@ -79,25 +88,38 @@
                 </div>
 
                 <div class="space-y-2">
-                    <label for="{{ form.finca.id_for_label }}" class="block text-gray-700 text-sm font-bold">Finca:</label>
-                    <input type="text" 
-                           name="{{ form.finca.name }}" 
-                           id="{{ form.finca.id_for_label }}"
-                           value="{{ form.finca.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                           list="finca-list"
-                           required
-                           placeholder="Seleccione o escriba una finca">
-                    <datalist id="finca-list">
-                        {% for finca in fincas %}
-                            <option value="{{ finca }}">
-                        {% endfor %}
-                    </datalist>
+                    <label for="{{ form.finca.id_for_label }}" class="block text-gray-700 text-sm font-bold">
+                        <i class="fas fa-map-marker-alt text-green-600 mr-1"></i>
+                        Finca:
+                    </label>
+                    <div class="relative">
+                        <select name="{{ form.finca.name }}" 
+                                id="{{ form.finca.id_for_label }}"
+                                class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full pr-10"
+                                required>
+                            <option value="">Seleccione finca</option>
+                            <!-- Las opciones se cargan dinámicamente -->
+                        </select>
+                        <!-- Solo mostrar botón en modo crear -->
+                        {% if not modo == 'editar' %}
+                        <button type="button" id="btn-agregar-finca" 
+                                class="absolute right-2 top-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded transition-colors" 
+                                title="Agregar nueva finca">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        {% endif %}
+                    </div>
                     {% if form.finca.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.finca.errors|first }}</p>
                     {% endif %}
                 </div>
+            </div>
+        </fieldset>
 
+        <!-- Información de Destino y Comprador -->
+        <fieldset class="border border-gray-300 p-6 rounded-md mb-6">
+            <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Destino y Comprador</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                 <div class="space-y-2">
                     <label for="{{ form.destino.id_for_label }}" class="block text-gray-700 text-sm font-bold">Destino:</label>
                     <select name="{{ form.destino.name }}" 
@@ -105,11 +127,14 @@
                             class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
                             required>
                         <option value="">Seleccione destino</option>
-                        {% for value, label in form.destino.field.choices %}
-                            <option value="{{ value }}" {% if form.destino.value == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
+                        <option value="Bodega" {% if form.destino.value == 'Bodega' %}selected{% endif %}>Bodega</option>
+                        <option value="Descarte" {% if form.destino.value == 'Descarte' %}selected{% endif %}>Descarte</option>
+                        <option value="Exportacion" {% if form.destino.value == 'Exportacion' %}selected{% endif %}>Exportación</option>
+                        <option value="Fardo" {% if form.destino.value == 'Fardo' %}selected{% endif %}>Fardo</option>
+                        <option value="Mercado Interno" {% if form.destino.value == 'Mercado Interno' %}selected{% endif %}>Mercado Interno</option>
+                        <option value="Pasa" {% if form.destino.value == 'Pasa' %}selected{% endif %}>Pasa</option>
+                        <option value="Rama Pasa" {% if form.destino.value == 'Rama Pasa' %}selected{% endif %}>Rama Pasa</option>
+                        <option value="Semilla" {% if form.destino.value == 'Semilla' %}selected{% endif %}>Semilla</option>
                     </select>
                     {% if form.destino.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.destino.errors|first }}</p>
@@ -117,126 +142,137 @@
                 </div>
 
                 <div class="space-y-2">
-                    <label for="{{ form.comprador.id_for_label }}" class="block text-gray-700 text-sm font-bold">Comprador:</label>
-                    <input type="text" 
-                           name="{{ form.comprador.name }}" 
-                           id="{{ form.comprador.id_for_label }}"
-                           value="{{ form.comprador.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                           list="comprador-list"
-                           required
-                           placeholder="Seleccione o escriba un comprador">
-                    <datalist id="comprador-list">
-                        {% for comprador in compradores %}
-                            <option value="{{ comprador }}">
-                        {% endfor %}
-                    </datalist>
+                    <label for="{{ form.comprador.id_for_label }}" class="block text-gray-700 text-sm font-bold">
+                        <i class="fas fa-user-tie text-blue-600 mr-1"></i>
+                        Comprador:
+                    </label>
+                    <div class="relative">
+                        <select name="{{ form.comprador.name }}" 
+                                id="{{ form.comprador.id_for_label }}"
+                                class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full pr-10"
+                                required>
+                            <option value="">Seleccione comprador</option>
+                            <!-- Las opciones se cargan dinámicamente -->
+                        </select>
+                        <!-- Solo mostrar botón en modo crear -->
+                        {% if not modo == 'editar' %}
+                        <button type="button" id="btn-agregar-comprador" 
+                                class="absolute right-2 top-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded transition-colors" 
+                                title="Agregar nuevo comprador">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        {% endif %}
+                    </div>
                     {% if form.comprador.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.comprador.errors|first }}</p>
-                    {% endif %}
-                </div>
-
-                <div class="space-y-2">
-                    <label for="{{ form.cultivo.id_for_label }}" class="block text-gray-700 text-sm font-bold">Cultivo:</label>
-                    <input type="text" 
-                           name="{{ form.cultivo.name }}" 
-                           id="{{ form.cultivo.id_for_label }}"
-                           value="{{ form.cultivo.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                           list="cultivo-list"
-                           required
-                           placeholder="Ej: Uva, Alfalfa">
-                    <datalist id="cultivo-list">
-                        {% for cultivo in cultivos %}
-                            <option value="{{ cultivo }}">
-                        {% endfor %}
-                    </datalist>
-                    {% if form.cultivo.errors %}
-                        <p class="text-red-500 text-xs italic mt-1">{{ form.cultivo.errors|first }}</p>
                     {% endif %}
                 </div>
             </div>
         </fieldset>
 
-        <!-- Detalles del Producto -->
+        <!-- Información del Cultivo -->
         <fieldset class="border border-gray-300 p-6 rounded-md mb-6">
-            <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Detalles del Producto</legend>
+            <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Información del Cultivo</legend>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
                 <div class="space-y-2">
-                    <label for="{{ form.parral_potrero.id_for_label }}" class="block text-gray-700 text-sm font-bold">Parral/Potrero:</label>
-                    <input type="text" 
-                           name="{{ form.parral_potrero.name }}" 
-                           id="{{ form.parral_potrero.id_for_label }}"
-                           value="{{ form.parral_potrero.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                           required
-                           placeholder="Ej: Parral 16, Potrero Norte">
-                    {% if form.parral_potrero.errors %}
-                        <p class="text-red-500 text-xs italic mt-1">{{ form.parral_potrero.errors|first }}</p>
+                    <label for="{{ form.cultivo.id_for_label }}" class="block text-gray-700 text-sm font-bold">
+                        <i class="fas fa-seedling text-green-600 mr-1"></i>
+                        Cultivo:
+                    </label>
+                    <div class="relative">
+                        <select name="{{ form.cultivo.name }}" 
+                                id="{{ form.cultivo.id_for_label }}"
+                                class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full pr-10"
+                                required>
+                            <option value="">Seleccione cultivo</option>
+                            <!-- Las opciones se cargan dinámicamente -->
+                        </select>
+                        <!-- Solo mostrar botón en modo crear -->
+                        {% if not modo == 'editar' %}
+                        <button type="button" id="btn-agregar-cultivo" 
+                                class="absolute right-2 top-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded transition-colors" 
+                                title="Agregar nuevo cultivo">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% if form.cultivo.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.cultivo.errors|first }}</p>
                     {% endif %}
                 </div>
 
                 <div class="space-y-2">
-                    <label for="{{ form.variedad.id_for_label }}" class="block text-gray-700 text-sm font-bold">Variedad:</label>
-                    <input type="text" 
-                           name="{{ form.variedad.name }}" 
-                           id="{{ form.variedad.id_for_label }}"
-                           value="{{ form.variedad.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                           list="variedad-list"
-                           required
-                           placeholder="Ej: Sultanina, Red Globe">
-                    <datalist id="variedad-list">
-                        {% for variedad in variedades %}
-                            <option value="{{ variedad }}">
-                        {% endfor %}
-                    </datalist>
+                    <label for="{{ form.variedad.id_for_label }}" class="block text-gray-700 text-sm font-bold">
+                        <i class="fas fa-leaf text-purple-600 mr-1"></i>
+                        Variedad:
+                    </label>
+                    <div class="relative">
+                        <select name="{{ form.variedad.name }}" 
+                                id="{{ form.variedad.id_for_label }}"
+                                class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full pr-10"
+                                required>
+                            <option value="">Seleccione variedad</option>
+                            <!-- Las opciones se cargan dinámicamente -->
+                        </select>
+                        <!-- Solo mostrar botón en modo crear -->
+                        {% if not modo == 'editar' %}
+                        <button type="button" id="btn-agregar-variedad" 
+                                class="absolute right-2 top-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded transition-colors" 
+                                title="Agregar nueva variedad">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        {% endif %}
+                    </div>
                     {% if form.variedad.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.variedad.errors|first }}</p>
                     {% endif %}
                 </div>
 
                 <div class="space-y-2">
-                    <label for="{{ form.medida.id_for_label }}" class="block text-gray-700 text-sm font-bold">Medida:</label>
-                    <select name="{{ form.medida.name }}" 
-                            id="{{ form.medida.id_for_label }}"
-                            class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                            required>
-                        <option value="">Seleccione medida</option>
-                        {% for value, label in form.medida.field.choices %}
-                            <option value="{{ value }}" {% if form.medida.value == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    {% if form.medida.errors %}
-                        <p class="text-red-500 text-xs italic mt-1">{{ form.medida.errors|first }}</p>
+                    <label for="{{ form.parral_potrero.id_for_label }}" class="block text-gray-700 text-sm font-bold">Parral/Potrero:</label>
+                    <input type="text" 
+                           name="{{ form.parral_potrero.name }}" 
+                           id="{{ form.parral_potrero.id_for_label }}"
+                           value="{{ form.parral_potrero.value|default:'' }}"
+                           placeholder="Ej: Parral 15, Potrero A"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           required>
+                    {% if form.parral_potrero.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.parral_potrero.errors|first }}</p>
                     {% endif %}
                 </div>
+            </div>
+        </fieldset>
 
+        <!-- Información de Documentación -->
+        <fieldset class="border border-gray-300 p-6 rounded-md mb-6">
+            <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Documentación</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                 <div class="space-y-2">
-                    <label for="{{ form.remito.id_for_label }}" class="block text-gray-700 text-sm font-bold">Número de Remito:</label>
+                    <label for="{{ form.remito.id_for_label }}" class="block text-gray-700 text-sm font-bold">N° de Remito:</label>
                     <input type="text" 
                            name="{{ form.remito.name }}" 
                            id="{{ form.remito.id_for_label }}"
                            value="{{ form.remito.value|default:'' }}"
+                           placeholder="Número de remito"
                            class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                           required
-                           placeholder="Ej: REM-2024-001">
+                           required>
                     {% if form.remito.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.remito.errors|first }}</p>
                     {% endif %}
                 </div>
 
                 <div class="space-y-2">
-                    <label for="{{ form.ciu.id_for_label }}" class="block text-gray-700 text-sm font-bold">CIU (Opcional):</label>
+                    <label for="{{ form.ciu.id_for_label }}" class="block text-gray-700 text-sm font-bold">
+                        CIU: 
+                        <span class="text-gray-500 font-normal text-xs">(Solo para uva de bodega)</span>
+                    </label>
                     <input type="number" 
                            name="{{ form.ciu.name }}" 
                            id="{{ form.ciu.id_for_label }}"
                            value="{{ form.ciu.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                           placeholder="Solo para uva de bodega">
-                    <small class="text-gray-500 text-xs">Solo para uva de bodega</small>
+                           placeholder="Número CIU"
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                     {% if form.ciu.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.ciu.errors|first }}</p>
                     {% endif %}
@@ -244,153 +280,622 @@
             </div>
         </fieldset>
 
-        <!-- Pesos y Cantidades -->
+        <!-- Información de Medidas y Cantidades -->
         <fieldset class="border border-gray-300 p-6 rounded-md mb-6">
-            <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Pesos y Cantidades</legend>
-            
-            <!-- Campos para Caja/Bin -->
-            <div id="campos-caja-bin" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            <legend class="text-lg font-semibold px-3 bg-white text-gray-800">Medidas y Cantidades</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
+                <div class="space-y-2">
+                    <label for="{{ form.medida.id_for_label }}" class="block text-gray-700 text-sm font-bold">Tipo de Medida:</label>
+                    <select name="{{ form.medida.name }}" 
+                            id="{{ form.medida.id_for_label }}"
+                            class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                            required>
+                        <option value="">Seleccione medida</option>
+                        <option value="Caja" {% if form.medida.value == 'Caja' %}selected{% endif %}>Caja</option>
+                        <option value="Bin" {% if form.medida.value == 'Bin' %}selected{% endif %}>Bin</option>
+                        <option value="Chasis" {% if form.medida.value == 'Chasis' %}selected{% endif %}>Chasis</option>
+                    </select>
+                    {% if form.medida.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.medida.errors|first }}</p>
+                    {% endif %}
+                </div>
+
                 <div class="space-y-2">
                     <label for="{{ form.cantidad.id_for_label }}" class="block text-gray-700 text-sm font-bold">Cantidad:</label>
                     <input type="number" 
                            name="{{ form.cantidad.name }}" 
                            id="{{ form.cantidad.id_for_label }}"
                            value="{{ form.cantidad.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           placeholder="Cantidad de unidades"
                            min="1"
-                           placeholder="Número de cajas/bins">
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           required>
                     {% if form.cantidad.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.cantidad.errors|first }}</p>
                     {% endif %}
                 </div>
 
-                <div class="space-y-2">
+                <!-- Campos que se muestran según el tipo de medida -->
+                <div class="space-y-2" id="campo-peso-unitario">
                     <label for="{{ form.peso_unitario.id_for_label }}" class="block text-gray-700 text-sm font-bold">Peso Unitario (Kg):</label>
                     <input type="number" 
                            name="{{ form.peso_unitario.name }}" 
                            id="{{ form.peso_unitario.id_for_label }}"
                            value="{{ form.peso_unitario.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           placeholder="Peso por unidad"
                            step="0.01"
-                           min="0"
-                           placeholder="Peso por caja/bin">
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                     {% if form.peso_unitario.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.peso_unitario.errors|first }}</p>
                     {% endif %}
                 </div>
-            </div>
 
-            <!-- Campos para Chasis -->
-            <div id="campos-chasis" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4" style="display: none;">
-                <div class="space-y-2">
+                <!-- Campos específicos para Chasis -->
+                <div class="space-y-2" id="campo-bruto" style="display: none;">
                     <label for="{{ form.bruto.id_for_label }}" class="block text-gray-700 text-sm font-bold">Peso Bruto (Kg):</label>
                     <input type="number" 
                            name="{{ form.bruto.name }}" 
                            id="{{ form.bruto.id_for_label }}"
                            value="{{ form.bruto.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           placeholder="Peso bruto total"
                            step="0.01"
-                           min="0"
-                           placeholder="Peso total del chasis">
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                     {% if form.bruto.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.bruto.errors|first }}</p>
                     {% endif %}
                 </div>
 
-                <div class="space-y-2">
+                <div class="space-y-2" id="campo-tara" style="display: none;">
                     <label for="{{ form.tara.id_for_label }}" class="block text-gray-700 text-sm font-bold">Tara (Kg):</label>
                     <input type="number" 
                            name="{{ form.tara.name }}" 
                            id="{{ form.tara.id_for_label }}"
                            value="{{ form.tara.value|default:'' }}"
-                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                           placeholder="Peso de la tara"
                            step="0.01"
-                           min="0"
-                           placeholder="Peso del envase">
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                     {% if form.tara.errors %}
                         <p class="text-red-500 text-xs italic mt-1">{{ form.tara.errors|first }}</p>
                     {% endif %}
                 </div>
-            </div>
 
-            <!-- Indicador de Kg Totales -->
-            <div class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500 mt-6">
-                <div class="flex items-center">
-                    <span class="text-blue-800 font-semibold">Kg Totales: </span>
-                    <span id="kg-totales-display" class="text-blue-900 font-bold ml-2">0 kg</span>
+                <!-- Campo calculado de kg totales -->
+                <div class="space-y-2 bg-blue-50 p-3 rounded-lg">
+                    <label class="block text-gray-700 text-sm font-bold text-blue-800">Kg Totales (Calculado):</label>
+                    <div id="kg-totales-display" class="text-2xl font-bold text-blue-600">0 kg</div>
                 </div>
             </div>
         </fieldset>
 
-        <!-- Botones de Acción -->
+        <!-- Botón de Guardar -->
         <div class="flex justify-center">
-            <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-medium text-lg transition-colors duration-200">
+            <button type="submit" class="btn bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-medium flex items-center text-lg transition-colors duration-200">
                 {% if modo == 'editar' %}
-                    <i class="fas fa-save mr-2"></i>Actualizar Registro
+                    <i class="fas fa-save mr-2"></i> Actualizar Cosecha
                 {% else %}
-                    <i class="fas fa-save mr-2"></i>Guardar Registro
+                    <i class="fas fa-save mr-2"></i> Guardar Cosecha
                 {% endif %}
             </button>
         </div>
     </form>
 
+    <!-- Modales para agregar opciones dinámicas - Solo en modo crear -->
+    {% if not modo == 'editar' %}
+    <!-- Modal Finca -->
+    <div id="modal-finca" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Agregar Nueva Finca</h3>
+                    <button onclick="cerrarModal('modal-finca')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="nueva-finca" placeholder="Nombre de la finca" 
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="cerrarModal('modal-finca')" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                            Cancelar
+                        </button>
+                        <button onclick="agregarFinca()" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                            Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Comprador -->
+    <div id="modal-comprador" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Agregar Nuevo Comprador</h3>
+                    <button onclick="cerrarModal('modal-comprador')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="nuevo-comprador" placeholder="Nombre del comprador" 
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="cerrarModal('modal-comprador')" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                            Cancelar
+                        </button>
+                        <button onclick="agregarComprador()" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                            Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cultivo -->
+    <div id="modal-cultivo" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Agregar Nuevo Cultivo</h3>
+                    <button onclick="cerrarModal('modal-cultivo')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="nuevo-cultivo" placeholder="Nombre del cultivo" 
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="cerrarModal('modal-cultivo')" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                            Cancelar
+                        </button>
+                        <button onclick="agregarCultivo()" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                            Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Variedad -->
+    <div id="modal-variedad" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Agregar Nueva Variedad</h3>
+                    <button onclick="cerrarModal('modal-variedad')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="nueva-variedad" placeholder="Nombre de la variedad" 
+                           class="form-control border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="cerrarModal('modal-variedad')" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                            Cancelar
+                        </button>
+                        <button onclick="agregarVariedad()" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                            Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <script>
-        // Mostrar/ocultar campos según la medida seleccionada
         document.addEventListener('DOMContentLoaded', function() {
+            // === ELEMENTOS DEL FORMULARIO ===
             const medidaSelect = document.getElementById('{{ form.medida.id_for_label }}');
-            const camposCajaBin = document.getElementById('campos-caja-bin');
-            const camposChasis = document.getElementById('campos-chasis');
+            const cantidadInput = document.getElementById('{{ form.cantidad.id_for_label }}');
+            const pesoUnitarioInput = document.getElementById('{{ form.peso_unitario.id_for_label }}');
+            const brutoInput = document.getElementById('{{ form.bruto.id_for_label }}');
+            const taraInput = document.getElementById('{{ form.tara.id_for_label }}');
             
+            const campoPesoUnitario = document.getElementById('campo-peso-unitario');
+            const campoBruto = document.getElementById('campo-bruto');
+            const campoTara = document.getElementById('campo-tara');
+            const kgTotalesDisplay = document.getElementById('kg-totales-display');
+
+            // === SELECTS DINÁMICOS ===
+            const fincaSelect = document.getElementById('{{ form.finca.id_for_label }}');
+            const compradorSelect = document.getElementById('{{ form.comprador.id_for_label }}');
+            const cultivoSelect = document.getElementById('{{ form.cultivo.id_for_label }}');
+            const variedadSelect = document.getElementById('{{ form.variedad.id_for_label }}');
+
+            // === FUNCIÓN PARA MOSTRAR/OCULTAR CAMPOS SEGÚN MEDIDA ===
             function toggleCamposMedida() {
                 const medida = medidaSelect.value;
                 
                 if (medida === 'Chasis') {
-                    camposCajaBin.style.display = 'none';
-                    camposChasis.style.display = 'grid';
+                    campoPesoUnitario.style.display = 'none';
+                    campoBruto.style.display = 'block';
+                    campoTara.style.display = 'block';
+                    
+                    pesoUnitarioInput.required = false;
+                    brutoInput.required = true;
+                    taraInput.required = true;
                 } else {
-                    camposCajaBin.style.display = 'grid';
-                    camposChasis.style.display = 'none';
+                    campoPesoUnitario.style.display = 'block';
+                    campoBruto.style.display = 'none';
+                    campoTara.style.display = 'none';
+                    
+                    pesoUnitarioInput.required = true;
+                    brutoInput.required = false;
+                    taraInput.required = false;
                 }
                 
                 calcularKgTotales();
             }
-            
-            // Inicializar vista según medida seleccionada (importante para edición)
-            toggleCamposMedida();
-            
+
+            // === FUNCIÓN PARA CALCULAR KG TOTALES ===
+            function calcularKgTotales() {
+                let kgTotales = 0;
+                const medida = medidaSelect.value;
+                const cantidad = parseFloat(cantidadInput.value) || 0;
+                
+                if (medida === 'Chasis') {
+                    const bruto = parseFloat(brutoInput.value) || 0;
+                    const tara = parseFloat(taraInput.value) || 0;
+                    kgTotales = bruto - tara;
+                } else {
+                    const pesoUnitario = parseFloat(pesoUnitarioInput.value) || 0;
+                    kgTotales = cantidad * pesoUnitario;
+                }
+                
+                kgTotales = Math.max(0, kgTotales); // No permitir valores negativos
+                kgTotalesDisplay.textContent = kgTotales.toFixed(2) + ' kg';
+            }
+
+            // === FUNCIONES PARA CARGAR OPCIONES DINÁMICAS ===
+            function cargarFincas() {
+                fetch('{% url "get_fincas_cosecha" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        const fincaActual = '{{ form.finca.value|default:"" }}';
+                        fincaSelect.innerHTML = '<option value="">Seleccione finca</option>';
+                        
+                        data.fincas.forEach(finca => {
+                            const option = new Option(finca, finca);
+                            if (finca === fincaActual) option.selected = true;
+                            fincaSelect.add(option);
+                        });
+                    })
+                    .catch(error => console.error('Error al cargar fincas:', error));
+            }
+
+            function cargarCompradores() {
+                fetch('{% url "get_compradores_cosecha" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        const compradorActual = '{{ form.comprador.value|default:"" }}';
+                        compradorSelect.innerHTML = '<option value="">Seleccione comprador</option>';
+                        
+                        data.compradores.forEach(comprador => {
+                            const option = new Option(comprador, comprador);
+                            if (comprador === compradorActual) option.selected = true;
+                            compradorSelect.add(option);
+                        });
+                    })
+                    .catch(error => console.error('Error al cargar compradores:', error));
+            }
+
+            function cargarCultivos() {
+                fetch('{% url "get_cultivos_cosecha" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        const cultivoActual = '{{ form.cultivo.value|default:"" }}';
+                        cultivoSelect.innerHTML = '<option value="">Seleccione cultivo</option>';
+                        
+                        data.cultivos.forEach(cultivo => {
+                            const option = new Option(cultivo, cultivo);
+                            if (cultivo === cultivoActual) option.selected = true;
+                            cultivoSelect.add(option);
+                        });
+                    })
+                    .catch(error => console.error('Error al cargar cultivos:', error));
+            }
+
+            function cargarVariedades() {
+                fetch('{% url "get_variedades_cosecha" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        const variedadActual = '{{ form.variedad.value|default:"" }}';
+                        variedadSelect.innerHTML = '<option value="">Seleccione variedad</option>';
+                        
+                        data.variedades.forEach(variedad => {
+                            const option = new Option(variedad, variedad);
+                            if (variedad === variedadActual) option.selected = true;
+                            variedadSelect.add(option);
+                        });
+                    })
+                    .catch(error => console.error('Error al cargar variedades:', error));
+            }
+
+            // === EVENT LISTENERS ===
             medidaSelect.addEventListener('change', toggleCamposMedida);
-            
-            // Event listeners para recálculo automático
-            ['{{ form.peso_unitario.id_for_label }}', '{{ form.cantidad.id_for_label }}', 
-             '{{ form.bruto.id_for_label }}', '{{ form.tara.id_for_label }}'].forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.addEventListener('input', calcularKgTotales);
+            cantidadInput.addEventListener('input', calcularKgTotales);
+            pesoUnitarioInput.addEventListener('input', calcularKgTotales);
+            brutoInput.addEventListener('input', calcularKgTotales);
+            taraInput.addEventListener('input', calcularKgTotales);
+
+            {% if not modo == 'editar' %}
+            // Solo agregar listeners en modo crear
+            document.getElementById('btn-agregar-finca').addEventListener('click', () => abrirModal('modal-finca'));
+            document.getElementById('btn-agregar-comprador').addEventListener('click', () => abrirModal('modal-comprador'));
+            document.getElementById('btn-agregar-cultivo').addEventListener('click', () => abrirModal('modal-cultivo'));
+            document.getElementById('btn-agregar-variedad').addEventListener('click', () => abrirModal('modal-variedad'));
+            {% endif %}
+
+            // === VALIDACIÓN DEL FORMULARIO ===
+            document.getElementById('cosecha-form').addEventListener('submit', function(e) {
+                const kgTotales = parseFloat(kgTotalesDisplay.textContent) || 0;
+                
+                if (kgTotales <= 0) {
+                    e.preventDefault();
+                    alert('Los kg totales deben ser mayores a 0. Verifique las cantidades ingresadas.');
+                    return false;
+                }
+                
+                const medida = medidaSelect.value;
+                if (medida === 'Chasis') {
+                    const bruto = parseFloat(brutoInput.value) || 0;
+                    const tara = parseFloat(taraInput.value) || 0;
+                    
+                    if (tara >= bruto) {
+                        e.preventDefault();
+                        alert('La tara no puede ser mayor o igual al peso bruto.');
+                        return false;
+                    }
                 }
             });
-            
-            // Cálculo inicial
+
+            // === INICIALIZACIÓN ===
+            toggleCamposMedida();
+            cargarFincas();
+            cargarCompradores();
+            cargarCultivos();
+            cargarVariedades();
             calcularKgTotales();
+            
+            // Focus en fecha
+            document.getElementById('{{ form.fecha.id_for_label }}').focus();
         });
 
-        // Función para calcular kg totales en tiempo real
-        function calcularKgTotales() {
-            const medida = document.getElementById('{{ form.medida.id_for_label }}').value;
-            const kgDisplay = document.getElementById('kg-totales-display');
+        {% if not modo == 'editar' %}
+        // === FUNCIONES GLOBALES PARA MODALES (solo en modo crear) ===
+        function abrirModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function cerrarModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            // Limpiar inputs
+            const input = document.querySelector(`#${modalId} input[type="text"]`);
+            if (input) input.value = '';
+        }
+
+        function agregarFinca() {
+            const nombre = document.getElementById('nueva-finca').value.trim();
+            if (!nombre) {
+                alert('Por favor, ingrese un nombre para la finca.');
+                return;
+            }
+
+            fetch('{% url "agregar_finca_cosecha" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `nombre=${encodeURIComponent(nombre)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const fincaSelect = document.getElementById('{{ form.finca.id_for_label }}');
+                    const option = new Option(nombre, nombre);
+                    option.selected = true;
+                    fincaSelect.add(option);
+                    cerrarModal('modal-finca');
+                    alert('Finca agregada exitosamente.');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al agregar la finca.');
+            });
+        }
+
+        function agregarComprador() {
+            const nombre = document.getElementById('nuevo-comprador').value.trim();
+            if (!nombre) {
+                alert('Por favor, ingrese un nombre para el comprador.');
+                return;
+            }
+
+            fetch('{% url "agregar_comprador_cosecha" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `nombre=${encodeURIComponent(nombre)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const compradorSelect = document.getElementById('{{ form.comprador.id_for_label }}');
+                    const option = new Option(nombre, nombre);
+                    option.selected = true;
+                    compradorSelect.add(option);
+                    cerrarModal('modal-comprador');
+                    alert('Comprador agregado exitosamente.');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al agregar el comprador.');
+            });
+        }
+
+        function agregarCultivo() {
+            const nombre = document.getElementById('nuevo-cultivo').value.trim();
+            if (!nombre) {
+                alert('Por favor, ingrese un nombre para el cultivo.');
+                return;
+            }
+
+            fetch('{% url "agregar_cultivo_cosecha" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `nombre=${encodeURIComponent(nombre)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const cultivoSelect = document.getElementById('{{ form.cultivo.id_for_label }}');
+                    const option = new Option(nombre, nombre);
+                    option.selected = true;
+                    cultivoSelect.add(option);
+                    cerrarModal('modal-cultivo');
+                    alert('Cultivo agregado exitosamente.');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al agregar el cultivo.');
+            });
+        }
+
+        function agregarVariedad() {
+            const nombre = document.getElementById('nueva-variedad').value.trim();
+            if (!nombre) {
+                alert('Por favor, ingrese un nombre para la variedad.');
+                return;
+            }
+
+            fetch('{% url "agregar_variedad_cosecha" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `nombre=${encodeURIComponent(nombre)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const variedadSelect = document.getElementById('{{ form.variedad.id_for_label }}');
+                    const option = new Option(nombre, nombre);
+                    option.selected = true;
+                    variedadSelect.add(option);
+                    cerrarModal('modal-variedad');
+                    alert('Variedad agregada exitosamente.');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al agregar la variedad.');
+            });
+        }
+
+        // Cerrar modales al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            const modales = ['modal-finca', 'modal-comprador', 'modal-cultivo', 'modal-variedad'];
+            modales.forEach(modalId => {
+                if (e.target.id === modalId) {
+                    cerrarModal(modalId);
+                }
+            });
+        });
+        {% endif %}
+    </script>
+
+    <style>
+        /* === ESTILOS ESPECÍFICOS PARA EL FORMULARIO DE COSECHA === */
+        fieldset {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: border-color 0.3s ease;
+        }
+
+        fieldset:focus-within {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        legend {
+            background: white;
+            padding: 0 0.75rem;
+            font-weight: 600;
+            color: #374151;
+            border-radius: 4px;
+        }
+
+        /* Campos calculados destacados */
+        #kg-totales-display {
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* Botones de agregar */
+        button[id^="btn-agregar"] {
+            transition: all 0.2s ease;
+        }
+
+        button[id^="btn-agregar"]:hover {
+            transform: scale(1.1);
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
             
-            if (medida === 'Chasis') {
-                const bruto = parseFloat(document.getElementById('{{ form.bruto.id_for_label }}').value) || 0;
-                const tara = parseFloat(document.getElementById('{{ form.tara.id_for_label }}').value) || 0;
-                const total = bruto - tara;
-                kgDisplay.textContent = `${total.toFixed(2)} kg`;
-                kgDisplay.style.color = total > 0 ? '#059669' : '#dc2626';
-            } else {
-                const pesoUnitario = parseFloat(document.getElementById('{{ form.peso_unitario.id_for_label }}').value) || 0;
-                const cantidad = parseInt(document.getElementById('{{ form.cantidad.id_for_label }}').value) || 0;
-                const total = pesoUnitario * cantidad;
-                kgDisplay.textContent = `${total.toFixed(2)} kg`;
-                kgDisplay.style.color = total > 0 ? '#059669' : '#dc2626';
+            fieldset {
+                padding: 1rem;
+            }
+            
+            .text-lg {
+                font-size: 1rem;
             }
         }
-    </script>
+
+        /* Animaciones para campos dinámicos */
+        #campo-peso-unitario,
+        #campo-bruto,
+        #campo-tara {
+            transition: opacity 0.3s ease;
+        }
+
+        /* Iconos en los labels */
+        .fas {
+            opacity: 0.7;
+        }
+    </style>
 {% endblock contenido %}

@@ -59,6 +59,15 @@ class registro_trabajo(models.Model):
     class Meta:
         verbose_name = "Registro de Trabajo"
         verbose_name_plural = "Registros de Trabajo"
+        indexes = [
+            models.Index(fields=['fecha']),  # Consultas por fecha (muy frecuente)
+            models.Index(fields=['nombre_trabajador']),  # Búsquedas por trabajador
+            models.Index(fields=['clasificacion']),  # Filtros por temporada
+            models.Index(fields=['ubicacion']),  # Filtros por ubicación
+            models.Index(fields=['fecha', 'clasificacion']),  # Consultas combinadas del dashboard
+            models.Index(fields=['fecha', 'nombre_trabajador']),  # Análisis por trabajador y fecha
+            models.Index(fields=['tarea']),  # Filtros por tarea
+        ]
         permissions = [
             ("can_view_jornales", "Can view all jornal entries"),
             ("can_add_jornales", "Can add new jornal entries"),
@@ -105,7 +114,19 @@ class MovimientoFinanciero(models.Model):
     class Meta:
         verbose_name = "Movimiento Financiero"
         verbose_name_plural = "Movimientos Financieros"
-        ordering = ['-fecha'] 
+        ordering = ['-fecha']
+        indexes = [
+            models.Index(fields=['fecha']),  # Consultas por fecha (muy frecuente en KPIs)
+            models.Index(fields=['tipo']),  # Filtros por tipo
+            models.Index(fields=['clasificacion']),  # Filtros por clasificación
+            models.Index(fields=['origen']),  # Filtros por origen
+            models.Index(fields=['finca']),  # Filtros por finca
+            models.Index(fields=['forma_pago']),  # Filtros por forma de pago
+            models.Index(fields=['fecha', 'tipo']),  # Consultas combinadas frecuentes
+            models.Index(fields=['fecha', 'origen']),  # KPIs del dashboard
+            models.Index(fields=['moneda', 'fecha']),  # Análisis por moneda
+            models.Index(fields=['monto']),  # Para ordenamientos y agregaciones
+        ]
         permissions = [
             ("can_view_movimientos", "Can view all financial movements"),
             ("can_add_movimientos", "Can add new financial movements"),
@@ -206,6 +227,17 @@ class IngresoFinanciero(models.Model):
         verbose_name = "Ingreso Financiero"
         verbose_name_plural = "Ingresos Financieros"
         ordering = ['-fecha']
+        indexes = [
+            models.Index(fields=['fecha']),  # Consultas por fecha (muy frecuente)
+            models.Index(fields=['forma_pago']),  # Para filtros de cheques
+            models.Index(fields=['fecha_pago']),  # Para cheques próximos a vencer (CRÍTICO)
+            models.Index(fields=['comprador']),  # Búsquedas por comprador
+            models.Index(fields=['destino']),  # Filtros por destino
+            models.Index(fields=['origen']),  # Filtros por origen
+            models.Index(fields=['forma_pago', 'fecha_pago']),  # Cheques pendientes (Dashboard)
+            models.Index(fields=['fecha', 'forma_pago']),  # KPIs del dashboard
+            models.Index(fields=['monto']),  # Para agregaciones
+        ]
         permissions = [
             ("can_view_ingresos", "Can view all financial incomes"),
             ("can_add_ingresos", "Can add new financial incomes"),
@@ -244,6 +276,13 @@ class RegistroRiego(models.Model):
         verbose_name = "Registro de Riego"
         verbose_name_plural = "Registros de Riego"
         ordering = ['-inicio']
+        indexes = [
+            models.Index(fields=['inicio']),  # Consultas por fecha de inicio
+            models.Index(fields=['cabezal']),  # Filtros por cabezal
+            models.Index(fields=['parral']),  # Filtros por parral
+            models.Index(fields=['responsable']),  # Filtros por responsable
+            models.Index(fields=['inicio', 'cabezal']),  # Consultas combinadas
+        ]
         permissions = [
             ("can_view_riego", "Can view irrigation data"),
             ("can_add_riego", "Can add new irrigation entries"),
@@ -343,6 +382,17 @@ class RegistroCosecha(models.Model):
         verbose_name = "Registro de Cosecha"
         verbose_name_plural = "Registros de Cosecha"
         ordering = ['-fecha']
+        indexes = [
+            models.Index(fields=['fecha']),  # Consultas por fecha
+            models.Index(fields=['finca']),  # Filtros por finca
+            models.Index(fields=['variedad']),  # Filtros por variedad
+            models.Index(fields=['destino']),  # Filtros por destino
+            models.Index(fields=['comprador']),  # Filtros por comprador
+            models.Index(fields=['origen']),  # Filtros por origen
+            models.Index(fields=['fecha', 'finca']),  # Consultas combinadas
+            models.Index(fields=['fecha', 'variedad']),  # Análisis por variedad
+            models.Index(fields=['kg_totales']),  # Para agregaciones de peso
+        ]
 
 # nuevo modelo para análisis
 class AnalisisPermission(models.Model):
@@ -360,3 +410,57 @@ class ProduccionPermission(models.Model):
         permissions = [
             ("can_view_produccion_data", "Can view production data"),
         ]
+
+# AGREGAR al final del archivo models.py, después de CompradorIngreso:
+
+class FincaCosecha(models.Model):
+    """Modelo para gestionar fincas personalizadas de cosecha"""
+    nombre = models.CharField(max_length=100, unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.nombre
+    
+    class Meta:
+        verbose_name = "Finca de Cosecha"
+        verbose_name_plural = "Fincas de Cosecha"
+        ordering = ['nombre']
+
+class CompradorCosecha(models.Model):
+    """Modelo para gestionar compradores personalizados de cosecha"""
+    nombre = models.CharField(max_length=100, unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.nombre
+    
+    class Meta:
+        verbose_name = "Comprador de Cosecha"
+        verbose_name_plural = "Compradores de Cosecha"
+        ordering = ['nombre']
+
+class CultivoCosecha(models.Model):
+    """Modelo para gestionar cultivos personalizados de cosecha"""
+    nombre = models.CharField(max_length=100, unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.nombre
+    
+    class Meta:
+        verbose_name = "Cultivo de Cosecha"
+        verbose_name_plural = "Cultivos de Cosecha"
+        ordering = ['nombre']
+
+class VariedadCosecha(models.Model):
+    """Modelo para gestionar variedades personalizadas de cosecha"""
+    nombre = models.CharField(max_length=100, unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.nombre
+    
+    class Meta:
+        verbose_name = "Variedad de Cosecha"
+        verbose_name_plural = "Variedades de Cosecha"
+        ordering = ['nombre']

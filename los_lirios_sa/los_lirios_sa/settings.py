@@ -139,3 +139,127 @@ LOGOUT_REDIRECT_URL = '/login/'
 # Configuraciones de sesión
 SESSION_COOKIE_AGE = 8 * 60 * 60  # 8 horas
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+
+# === CONFIGURACIÓN DE CACHE AVANZADA ===
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'los-lirios-cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 2000,
+            'CULL_FREQUENCY': 3,
+        }
+    }
+}
+
+# Para producción con Redis:
+"""
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+        },
+        'KEY_PREFIX': 'los_lirios',
+        'VERSION': 1,
+        'TIMEOUT': 300,  # 5 minutos por defecto
+    }
+}
+"""
+
+# === CONFIGURACIÓN DE LOGGING PARA MONITOREO ===
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {name} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '[{levelname}] {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'los_lirios.log',
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'cache_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'cache_performance.log',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'contabilidad_loslirios': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.db.backends': {
+            'handlers': ['file'],
+            'level': 'WARNING',  # Solo queries problemáticas
+            'propagate': False,
+        },
+    },
+}
+
+# === CONFIGURACIONES DE RENDIMIENTO ===
+# Optimización de consultas de base de datos
+DATABASE_QUERY_TIMEOUT = 30
+
+# Configuración de paginación por defecto
+DEFAULT_PAGINATION_SIZE = 25
+MAX_PAGINATION_SIZE = 100
+
+# Cache de templates en producción
+if not DEBUG:
+    TEMPLATES[0]['OPTIONS']['loaders'] = [
+        ('django.template.loaders.cached.Loader', [
+            'django.template.loaders.filesystem.Loader',
+            'django.template.loaders.app_directories.Loader',
+        ]),
+    ]
+
+# === CONFIGURACIÓN DE SESIONES OPTIMIZADA ===
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE = 3600  # 1 hora
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = False  # Solo guardar si hay cambios
+
+# === CONFIGURACIÓN DE MIDDLEWARE ===
+# Asegurar orden correcto para cache
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware', 
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
+    # MIDDLEWARES DE OPTIMIZACIÓN (en orden de importancia)
+    'contabilidad_loslirios.middleware.DatabaseOptimizationMiddleware',
+    'contabilidad_loslirios.middleware.CacheInvalidationMiddleware', 
+    'contabilidad_loslirios.middleware.PerformanceMonitoringMiddleware',
+    'contabilidad_loslirios.middleware.RequestLoggingMiddleware',
+]
+
+# Configuración del cache middleware
+CACHE_MIDDLEWARE_ALIAS = 'default'
+CACHE_MIDDLEWARE_SECONDS = 300  # 5 minutos
+CACHE_MIDDLEWARE_KEY_PREFIX = 'los_lirios'
