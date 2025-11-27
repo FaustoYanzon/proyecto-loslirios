@@ -1,3 +1,4 @@
+from datetime import date
 from django.db import models
 
 # Create your models here.
@@ -56,6 +57,13 @@ class registro_trabajo(models.Model):
     def __str__(self):
         return(f"{self.fecha} - {self.nombre_trabajador} - {self.tarea}")
     
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.cantidad is not None and self.cantidad <= 0:
+            raise ValidationError({'cantidad': 'La cantidad debe ser mayor a cero'})
+        if self.precio is not None and self.precio <= 0:
+            raise ValidationError({'precio': 'El precio debe ser mayor a cero'})
+
     class Meta:
         verbose_name = "Registro de Trabajo"
         verbose_name_plural = "Registros de Trabajo"
@@ -111,21 +119,28 @@ class MovimientoFinanciero(models.Model):
     def __str__(self):
         return f"{self.fecha} | {self.tipo} ({self.clasificacion}) - {self.moneda} {self.monto}"
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.monto is not None and self.monto < 0:
+            raise ValidationError({'monto': 'El monto no puede ser negativo'})
+        if self.fecha and self.fecha > date.today():
+            raise ValidationError({'fecha': 'La fecha no puede ser futura'})
+    
     class Meta:
         verbose_name = "Movimiento Financiero"
         verbose_name_plural = "Movimientos Financieros"
         ordering = ['-fecha']
         indexes = [
-            models.Index(fields=['fecha']),  # Consultas por fecha (muy frecuente en KPIs)
-            models.Index(fields=['tipo']),  # Filtros por tipo
-            models.Index(fields=['clasificacion']),  # Filtros por clasificación
-            models.Index(fields=['origen']),  # Filtros por origen
-            models.Index(fields=['finca']),  # Filtros por finca
-            models.Index(fields=['forma_pago']),  # Filtros por forma de pago
-            models.Index(fields=['fecha', 'tipo']),  # Consultas combinadas frecuentes
-            models.Index(fields=['fecha', 'origen']),  # KPIs del dashboard
-            models.Index(fields=['moneda', 'fecha']),  # Análisis por moneda
-            models.Index(fields=['monto']),  # Para ordenamientos y agregaciones
+            models.Index(fields=['fecha']),  
+            models.Index(fields=['tipo']),  
+            models.Index(fields=['clasificacion']),  
+            models.Index(fields=['origen']),  
+            models.Index(fields=['finca']),  
+            models.Index(fields=['forma_pago']),  
+            models.Index(fields=['fecha', 'tipo']),  
+            models.Index(fields=['fecha', 'origen']),  
+            models.Index(fields=['moneda', 'fecha']),  
+            models.Index(fields=['monto']),  
         ]
         permissions = [
             ("can_view_movimientos", "Can view all financial movements"),
@@ -223,6 +238,13 @@ class IngresoFinanciero(models.Model):
     def __str__(self):
         return f"{self.fecha} | {self.destino} - {self.comprador} - {self.moneda} {self.monto}"
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.monto is not None and self.monto <= 0:
+            raise ValidationError({'monto': 'El monto debe ser mayor a cero'})
+        if self.fecha and self.fecha > date.today():
+            raise ValidationError({'fecha': 'La fecha no puede ser futura'})
+
     class Meta:
         verbose_name = "Ingreso Financiero"
         verbose_name_plural = "Ingresos Financieros"
@@ -271,6 +293,13 @@ class RegistroRiego(models.Model):
 
     def __str__(self):
         return f"Riego en {self.parral} ({self.cabezal}) - {self.inicio.strftime('%d/%m/%Y %H:%M')}"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.fin and self.inicio and self.fin <= self.inicio:
+            raise ValidationError({'fin': 'La fecha y hora de fin debe ser posterior a la de inicio'})
+        if self.fertilizante_litros is not None and self.fertilizante_litros < 0:
+            raise ValidationError({'fertilizante_litros': 'Los litros de fertilizante no pueden ser negativos'})
 
     class Meta:
         verbose_name = "Registro de Riego"
@@ -377,6 +406,11 @@ class RegistroCosecha(models.Model):
     
     def __str__(self):
         return f"Cosecha {self.fecha} - {self.finca} - {self.variedad}"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.kg_totales is not None and self.kg_totales <= 0:
+            raise ValidationError({'kg_totales': 'Los kg totales deben ser mayor a cero'})
     
     class Meta:
         verbose_name = "Registro de Cosecha"

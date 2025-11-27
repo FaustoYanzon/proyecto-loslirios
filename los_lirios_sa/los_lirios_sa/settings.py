@@ -10,45 +10,55 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+from decouple import config, Csv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-y&h3dtblagm1_d0%yjaqtw$7#91&7m@1e_eawz67md%w^)j*v!'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # Application definition
-
-INSTALLED_APPS = [
+DJANGO_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.humanize',
+]
+
+THIRD_PARTY_APPS = [
+    'whitenoise',  # Para servir archivos estáticos
+]
+
+LOCAL_APPS = [
     'contabilidad_loslirios',
 ]
 
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Servir estáticos
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Nuestros middlewares personalizados
+    'contabilidad_loslirios.middleware.DatabaseOptimizationMiddleware',
+    'contabilidad_loslirios.middleware.CacheInvalidationMiddleware',
+    'contabilidad_loslirios.middleware.PerformanceMonitoringMiddleware',
+    'contabilidad_loslirios.middleware.RequestLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'los_lirios_sa.urls'
@@ -60,13 +70,10 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',  # <-- Agregado
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-            ],
-            'builtins': [
-                'django.templatetags.static',
             ],
         },
     },
@@ -74,21 +81,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'los_lirios_sa.wsgi.application'
 
-
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = config('DATABASE_URL', default='')
+if DATABASE_URL:
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL)
     }
-}
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -104,162 +112,153 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = 'es-es'
+TIME_ZONE = 'America/Argentina/Buenos_Aires'
 USE_I18N = True
-
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = 'static/'
-
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    BASE_DIR / "contabilidad_loslirios/static",
+    BASE_DIR / 'static',
 ]
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+# WhiteNoise configuration for serving static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# URLs para el sistema de autenticación de Django
-LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/login/'
+# Login/Logout URLs
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'main'
+LOGOUT_REDIRECT_URL = 'login'
 
-# Configuraciones de sesión
-SESSION_COOKIE_AGE = 8 * 60 * 60  # 8 horas
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-
-
-# === CONFIGURACIÓN DE CACHE AVANZADA ===
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'los-lirios-cache',
-        'OPTIONS': {
-            'MAX_ENTRIES': 2000,
-            'CULL_FREQUENCY': 3,
+# === CONFIGURACIÓN DE CACHE ===
+REDIS_URL = config('REDIS_URL', default='')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+            },
+            'KEY_PREFIX': 'los_lirios',
+            'VERSION': 1,
+            'TIMEOUT': 300,
         }
     }
-}
-
-# Para producción con Redis:
-"""
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-        },
-        'KEY_PREFIX': 'los_lirios',
-        'VERSION': 1,
-        'TIMEOUT': 300,  # 5 minutos por defecto
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'los-lirios-cache',
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000,
+                'CULL_FREQUENCY': 3,
+            },
+            'TIMEOUT': 300,
+        }
     }
-}
-"""
 
-# === CONFIGURACIÓN DE LOGGING PARA MONITOREO ===
+# === CONFIGURACIÓN DE LOGGING ===
+LOG_LEVEL = config('LOG_LEVEL', default='INFO')
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '[{levelname}] {asctime} {name} {process:d} {thread:d} {message}',
+            'format': '[{levelname}] {asctime} {name} {process:d} {thread:d} - {message}',
             'style': '{',
         },
         'simple': {
-            'format': '[{levelname}] {asctime} {message}',
+            'format': '[{levelname}] {asctime} - {message}',
             'style': '{',
         },
     },
     'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'los_lirios.log',
-            'formatter': 'verbose',
-        },
         'console': {
-            'level': 'DEBUG',
+            'level': LOG_LEVEL,
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-        'cache_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'cache_performance.log',
-            'formatter': 'simple',
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'los_lirios.log',
+            'maxBytes': 1024*1024*10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'errors.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
         },
     },
     'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
         'contabilidad_loslirios': {
-            'handlers': ['file', 'console'],
+            'handlers': ['console', 'file'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
         'django.db.backends': {
-            'handlers': ['file'],
-            'level': 'WARNING',  # Solo queries problemáticas
+            'handlers': ['error_file'],
+            'level': 'ERROR',
             'propagate': False,
         },
     },
 }
 
-# === CONFIGURACIONES DE RENDIMIENTO ===
-# Optimización de consultas de base de datos
-DATABASE_QUERY_TIMEOUT = 30
-
-# Configuración de paginación por defecto
-DEFAULT_PAGINATION_SIZE = 25
-MAX_PAGINATION_SIZE = 100
-
-# Cache de templates en producción
+# === CONFIGURACIONES DE SEGURIDAD ===
 if not DEBUG:
-    TEMPLATES[0]['OPTIONS']['loaders'] = [
-        ('django.template.loaders.cached.Loader', [
-            'django.template.loaders.filesystem.Loader',
-            'django.template.loaders.app_directories.Loader',
-        ]),
-    ]
+    # Configuraciones de seguridad para producción
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 año
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    X_FRAME_OPTIONS = 'DENY'
 
-# === CONFIGURACIÓN DE SESIONES OPTIMIZADA ===
+# === CONFIGURACIONES ESPECÍFICAS DE LA APLICACIÓN ===
+DEFAULT_PAGINATION_SIZE = config('PAGINATION_SIZE', default=25, cast=int)
+MAX_PAGINATION_SIZE = config('MAX_PAGINATION_SIZE', default=100, cast=int)
+
+# Email configuration (para notificaciones)
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@losliriossa.com')
+
+# Configuración de sesiones
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
-SESSION_COOKIE_AGE = 3600  # 1 hora
+SESSION_COOKIE_AGE = config('SESSION_COOKIE_AGE', default=3600, cast=int)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_SAVE_EVERY_REQUEST = False  # Solo guardar si hay cambios
 
-# === CONFIGURACIÓN DE MIDDLEWARE ===
-# Asegurar orden correcto para cache
-MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware', 
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
-    # MIDDLEWARES DE OPTIMIZACIÓN (en orden de importancia)
-    'contabilidad_loslirios.middleware.DatabaseOptimizationMiddleware',
-    'contabilidad_loslirios.middleware.CacheInvalidationMiddleware', 
-    'contabilidad_loslirios.middleware.PerformanceMonitoringMiddleware',
-    'contabilidad_loslirios.middleware.RequestLoggingMiddleware',
-]
-
-# Configuración del cache middleware
-CACHE_MIDDLEWARE_ALIAS = 'default'
-CACHE_MIDDLEWARE_SECONDS = 300  # 5 minutos
-CACHE_MIDDLEWARE_KEY_PREFIX = 'los_lirios'
+# Configuración de archivos subidos
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 10  # 10 MB

@@ -69,6 +69,8 @@ B. Frontend
  Optimizar imágenes
  Lazy loading
  CDN para assets estáticos
+
+
 🚀 DEPLOYMENT
 A. Servidor
  Configurar servidor (DigitalOcean, Heroku, AWS, etc.)
@@ -80,6 +82,8 @@ B. Monitoreo
  Monitoreo de performance
  Backups automáticos
  Alertas de sistema
+
+
 🧪 TESTING Y CALIDAD
 A. Testing
  Tests unitarios para models
@@ -91,6 +95,8 @@ B. Documentación
  Manual de usuario
  Guía de deployment
  Comentarios en código complejo
+
+ 
 🔧 MEJORAS TÉCNICAS
 A. APIs
  Django REST Framework para APIs más robustas

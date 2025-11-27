@@ -1946,3 +1946,271 @@ def dashboard_kpis_api(request):
             'success': False,
             'timestamp': datetime.now().isoformat()
         }, status=500)
+
+
+@login_required
+def autocompletar_origen_movimiento(request):
+    """API para autocompletar origen en movimientos"""
+    term = request.GET.get('term', '')
+    
+    if not term:
+        return JsonResponse([])
+    
+    # Buscar orígenes que contengan el término
+    origenes = MovimientoFinanciero.objects.filter(
+        origen__icontains=term
+    ).values_list('origen', flat=True).distinct()[:10]
+    
+    # Formatear respuesta para jQuery UI autocomplete
+    results = [
+        {'value': origen, 'label': origen}
+        for origen in origenes
+    ]
+    
+    return JsonResponse(results, safe=False)
+
+@login_required 
+def exportar_movimientos_excel(request):
+    """Exportar movimientos a Excel"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+    from django.http import HttpResponse
+    
+    # Obtener movimientos filtrados
+    movimientos = _obtener_movimientos_filtrados(request)
+    
+    # Crear workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Movimientos Financieros"
+    
+    # Headers
+    headers = [
+        'Fecha', 'Origen', 'Finca', 'Tipo', 'Clasificación', 
+        'Detalle', 'Monto', 'Moneda', 'Forma de Pago'
+    ]
+    
+    # Estilo para headers
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    
+    # Escribir headers
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Escribir datos
+    for row, movimiento in enumerate(movimientos, 2):
+        ws.cell(row=row, column=1, value=movimiento.fecha)
+        ws.cell(row=row, column=2, value=movimiento.origen)
+        ws.cell(row=row, column=3, value=movimiento.finca)
+        ws.cell(row=row, column=4, value=movimiento.tipo)
+        ws.cell(row=row, column=5, value=movimiento.clasificacion)
+        ws.cell(row=row, column=6, value=movimiento.detalle or '')
+        ws.cell(row=row, column=7, value=float(movimiento.monto))
+        ws.cell(row=row, column=8, value=movimiento.moneda)
+        ws.cell(row=row, column=9, value=movimiento.forma_pago)
+    
+    # Ajustar ancho de columnas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Preparar respuesta
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f"movimientos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response
+
+@login_required
+def consultar_movimientos(request):
+    """Vista de consulta de movimientos (alias para consultar_movimiento)"""
+    return consultar_movimiento(request)
+
+@login_required
+def consultar_ingresos(request):
+    """Vista de consulta de ingresos (alias)"""
+    return consultar_ingresos(request)
+
+@login_required
+def cargar_movimientos(request):
+    """Vista de cargar movimientos (alias)"""
+    return cargar_movimiento(request)
+
+@login_required
+def cargar_ingresos(request):
+    """Vista de cargar ingresos (alias)"""
+    return cargar_ingresos(request)
+
+@login_required
+def dashboard_kpis_api(request):
+    """API para KPIs del dashboard"""
+    from django.db.models import Sum, Count
+    from datetime import date, timedelta
+    import json
+    from django.utils import timezone
+    
+    try:
+        # Fecha actual y rango del mes
+        hoy = date.today()
+        inicio_mes = hoy.replace(day=1)
+        
+        # === CÁLCULOS DE GASTOS ===
+        gastos_mes = MovimientoFinanciero.objects.filter(
+            fecha__gte=inicio_mes,
+            fecha__lte=hoy
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        # === CÁLCULOS DE INGRESOS ===
+        ingresos_mes = IngresoFinanciero.objects.filter(
+            fecha__gte=inicio_mes,
+            fecha__lte=hoy
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        # === CÁLCULO DE CHEQUES ===
+        cheques_data = IngresoFinanciero.objects.filter(
+            fecha__gte=inicio_mes,
+            fecha__lte=hoy,
+            forma_pago__in=['Cheque', 'Echeque']
+        ).aggregate(
+            count=Count('id'),
+            total=Sum('monto')
+        )
+        
+        # === TRABAJADORES ACTIVOS ===
+        trabajadores_mes = registro_trabajo.objects.filter(
+            fecha__gte=inicio_mes,
+            fecha__lte=hoy
+        ).values('nombre_trabajador').distinct().count()
+        
+        # === VARIACIONES MES ANTERIOR ===
+        mes_anterior_inicio = (inicio_mes - timedelta(days=1)).replace(day=1)
+        mes_anterior_fin = inicio_mes - timedelta(days=1)
+        
+        gastos_mes_anterior = MovimientoFinanciero.objects.filter(
+            fecha__gte=mes_anterior_inicio,
+            fecha__lte=mes_anterior_fin
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        ingresos_mes_anterior = IngresoFinanciero.objects.filter(
+            fecha__gte=mes_anterior_inicio,
+            fecha__lte=mes_anterior_fin
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        
+        # Calcular variaciones
+        if gastos_mes_anterior > 0:
+            variacion_gastos = ((float(gastos_mes) - float(gastos_mes_anterior)) / float(gastos_mes_anterior)) * 100
+        else:
+            variacion_gastos = 100 if gastos_mes > 0 else 0
+            
+        if ingresos_mes_anterior > 0:
+            variacion_ingresos = ((float(ingresos_mes) - float(ingresos_mes_anterior)) / float(ingresos_mes_anterior)) * 100
+        else:
+            variacion_ingresos = 100 if ingresos_mes > 0 else 0
+        
+        # === SPARKLINES (últimos 7 días) ===
+        sparkline_gastos = []
+        sparkline_ingresos = []
+        
+        for i in range(7):
+            fecha_dia = hoy - timedelta(days=6-i)
+            
+            gasto_dia = MovimientoFinanciero.objects.filter(
+                fecha=fecha_dia
+            ).aggregate(total=Sum('monto'))['total'] or 0
+            
+            ingreso_dia = IngresoFinanciero.objects.filter(
+                fecha=fecha_dia
+            ).aggregate(total=Sum('monto'))['total'] or 0
+            
+            sparkline_gastos.append(float(gasto_dia))
+            sparkline_ingresos.append(float(ingreso_dia))
+        
+        # === SALDO DISPONIBLE ===
+        saldo_disponible = float(ingresos_mes) - float(gastos_mes)
+        
+        # === RESPUESTA ===
+        response_data = {
+            'gasto_total_mes': float(gastos_mes),
+            'ingresos_mes': float(ingresos_mes),
+            'saldo_disponible': saldo_disponible,
+            'cheques_mes': cheques_data['count'] or 0,
+            'monto_cheques_mes': float(cheques_data['total'] or 0),
+            'trabajadores_mes': trabajadores_mes,
+            'variacion_gastos': round(variacion_gastos, 1),
+            'variacion_ingresos': round(variacion_ingresos, 1),
+            'sparkline_gastos': sparkline_gastos,
+            'sparkline_ingresos': sparkline_ingresos,
+            'tiene_datos': bool(gastos_mes or ingresos_mes or trabajadores_mes),
+            'success': True,
+            'timestamp': timezone.now().isoformat()
+        }
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        # Respuesta de error
+        error_response = {
+            'gasto_total_mes': 0,
+            'ingresos_mes': 0,
+            'saldo_disponible': 0,
+            'cheques_mes': 0,
+            'monto_cheques_mes': 0,
+            'trabajadores_mes': 0,
+            'variacion_gastos': 0,
+            'variacion_ingresos': 0,
+            'sparkline_gastos': [0] * 7,
+            'sparkline_ingresos': [0] * 7,
+            'tiene_datos': False,
+            'success': False,
+            'error': str(e),
+            'timestamp': timezone.now().isoformat()
+        }
+        
+        return JsonResponse(error_response)
+
+# === FUNCIONES AUXILIARES FALTANTES ===
+
+def _obtener_movimientos_filtrados(request):
+    """Función auxiliar mejorada para filtros"""
+    form = FormConsultaMovimiento(request.GET or {})
+    movimientos = MovimientoFinanciero.objects.all().order_by('-fecha')
+
+    if form.is_valid():
+        # Filtros de fecha
+        fecha_desde = form.cleaned_data.get('fecha_desde')
+        fecha_hasta = form.cleaned_data.get('fecha_hasta')
+        
+        if fecha_desde:
+            movimientos = movimientos.filter(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            movimientos = movimientos.filter(fecha__lte=fecha_hasta)
+            
+        # Filtros adicionales
+        if form.cleaned_data.get('origen'):
+            movimientos = movimientos.filter(origen=form.cleaned_data['origen'])
+        if form.cleaned_data.get('finca'):
+            movimientos = movimientos.filter(finca=form.cleaned_data['finca'])
+        if form.cleaned_data.get('tipo'):
+            movimientos = movimientos.filter(tipo=form.cleaned_data['tipo'])
+        if form.cleaned_data.get('clasificacion'):
+            movimientos = movimientos.filter(clasificacion=form.cleaned_data['clasificacion'])
+        if form.cleaned_data.get('moneda'):
+            movimientos = movimientos.filter(moneda=form.cleaned_data['moneda'])
+        if form.cleaned_data.get('forma_pago'):
+            movimientos = movimientos.filter(forma_pago=form.cleaned_data['forma_pago'])
+
+    return movimientos

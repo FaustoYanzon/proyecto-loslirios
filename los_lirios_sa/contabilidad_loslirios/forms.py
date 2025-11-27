@@ -58,6 +58,18 @@ class FormRegistroTrabajo(forms.ModelForm):
             'ubicacion': 'Ubicación',
         }
 
+    def clean_cantidad(self):
+        cantidad = self.cleaned_data.get('cantidad')
+        if cantidad is not None and cantidad <= 0:
+            raise forms.ValidationError('La cantidad debe ser mayor a cero')
+        return cantidad
+
+    def clean_precio(self):
+        precio = self.cleaned_data.get('precio')
+        if precio is not None and precio <= 0:
+            raise forms.ValidationError('El precio debe ser mayor a cero')
+        return precio
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Actualiza las opciones de tarea según la clasificación seleccionada
@@ -151,6 +163,18 @@ class FormMovimientoFinanciero(forms.ModelForm):
             'monto': forms.NumberInput(attrs={'placeholder': '0.00'}),
         }
 
+    def clean_monto(self):
+        monto = self.cleaned_data.get('monto')
+        if monto is not None and monto < 0:
+            raise forms.ValidationError('El monto no puede ser negativo')
+        return monto
+
+    def clean_fecha(self):
+        fecha = self.cleaned_data.get('fecha')
+        if fecha and fecha > date.today():
+            raise forms.ValidationError('La fecha no puede ser futura')
+        return fecha
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -168,6 +192,8 @@ class FormMovimientoFinanciero(forms.ModelForm):
 
         for field_name, field in self.fields.items():
             field.widget.attrs.update({'class': 'form-control'})
+
+
 #Form for consult financial movements 
 class FormConsultaMovimiento(forms.Form):
     fecha_desde = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
@@ -255,6 +281,12 @@ class FormIngresoFinanciero(forms.ModelForm):
         self.fields['banco'].required = False
         self.fields['numero_cheque'].required = False
         self.fields['fecha_pago'].required = False
+
+    def clean_monto(self):
+        monto = self.cleaned_data.get('monto')
+        if monto is not None and monto <= 0:
+            raise forms.ValidationError('El monto debe ser mayor a cero')
+        return monto
 
     def clean(self):
         cleaned_data = super().clean()
@@ -437,6 +469,16 @@ class FormRegistroRiego(forms.ModelForm):
             'fertilizante_litros': 'Litros de Fertilizante',
             'responsable': 'Responsable'
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        inicio = cleaned_data.get('inicio')
+        fin = cleaned_data.get('fin')
+        
+        if inicio and fin and fin <= inicio:
+            raise forms.ValidationError('La hora de fin debe ser posterior a la hora de inicio')
+        
+        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -638,6 +680,12 @@ class RegistroCosechaForm(forms.ModelForm):
                 'step': '0.01'
             }),
         }
+    def clean_kg_totales(self):
+        kg_totales = self.cleaned_data.get('kg_totales')
+        if kg_totales is not None and kg_totales <= 0:
+            raise forms.ValidationError('Los kg totales deben ser mayor a cero')
+        return kg_totales      
+    
 #Form for Consultin Cosecha
 class FiltrosCosechaForm(forms.Form):
     fecha_inicio = forms.DateField(
