@@ -262,3 +262,66 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Configuración de archivos subidos
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 10  # 10 MB
+
+# === CONFIGURACIÓN ESPECÍFICA PARA DIGITALOCEAN ===
+import dj_database_url
+
+# Detectar si estamos en producción
+PRODUCTION = os.getenv('DJANGO_ENV') == 'production'
+
+if PRODUCTION:
+    # === CONFIGURACIÓN DE PRODUCCIÓN ===
+    DEBUG = False
+    
+    # Hosts permitidos
+    ALLOWED_HOSTS = [
+        'your-app-name.ondigitalocean.app',  # Cambiar por tu app
+        'your-domain.com',  # Si tienes dominio personalizado
+        'www.your-domain.com'
+    ]
+    
+    # Base de datos en producción
+    if 'DATABASE_URL' in os.environ:
+        DATABASES = {
+            'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
+        }
+    
+    # Archivos estáticos
+    STATIC_URL = '/static/'
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    
+    # Configuración de seguridad
+    SECURE_SSL_REDIRECT = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Cache con Redis (si disponible)
+    if 'REDIS_URL' in os.environ:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django_redis.cache.RedisCache',
+                'LOCATION': os.environ.get('REDIS_URL'),
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                }
+            }
+        }
+    
+    # Logging para producción
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'file': {
+                'level': 'WARNING',
+                'class': 'logging.FileHandler',
+                'filename': '/tmp/django.log',
+            },
+        },
+        'root': {
+            'handlers': ['file'],
+        },
+    }

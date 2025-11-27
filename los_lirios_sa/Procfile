@@ -1,0 +1,2 @@
+web: gunicorn los_lirios_sa.wsgi
+release: python manage.py migrate
